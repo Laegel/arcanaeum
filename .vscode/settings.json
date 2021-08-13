@@ -1,0 +1,10 @@
+{
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "prettier.trailingComma": "all",
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[svelte]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+    }
+}

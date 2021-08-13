@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "types": [
+      "babylonjs"
+    ],
+    "target": "ESNext"
+  },
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules/*",
+    "__sapper__/*",
+    "public/*"
+  ]
+}

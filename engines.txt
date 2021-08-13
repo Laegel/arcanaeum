@@ -1,0 +1,26 @@
+Babylonjs
+https://github.com/davidbasalla/isogame/tree/master/js
++ really powerful 3D engine
++ used in many companies
+- examples for iso look outdated
+
+PlayCanvas
+https://playcanvas.com/
++ really powerful 3D engine
++ used in many companies
+- no isometric examples
+- paid for private projects
+
+JSIso
+https://github.com/beakable/isometric
++ seems to just work
++ many mechanics just ready
+- old, discontinued
+- looks ugly, hopefully this can be fixed easily
+
+IsomerJS
+https://github.com/jdan/isomer
++ seems to just work
+- old
+- no docs
+
