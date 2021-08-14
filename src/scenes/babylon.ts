@@ -34,11 +34,12 @@ export default async (canvas, entities: Entity[]) => {
   const log = debounce((...args) => console.log(...args));
 
   const scene = new Scene(engine);
-  scene.debugLayer.show({
-    embedMode: true,
-  });
+  // scene.debugLayer.show({
+  //   embedMode: true,
+  // });
 
   const grid = new GridMaterial("grid", scene);
+  grid.gridOffset = new Vector3(0.5, 0, 0.5);
 
   const ground = Mesh.CreateGround("ground1", 20, 20, 1, scene);
   ground.material = grid;
@@ -54,6 +55,7 @@ export default async (canvas, entities: Entity[]) => {
     if (scope) {
       scope.dispose();
     }
+    
     currentlyPlayingMesh = interactiveMeshes.find(
       (interactiveMesh) => interactiveMesh.metadata.entity === entity,
     );
@@ -81,8 +83,8 @@ export default async (canvas, entities: Entity[]) => {
   const getProjectedPosition = () => {
     const pickedPoint = getUnprojectedPosition();
     return {
-      x: Math.floor(pickedPoint.x),
-      y: Math.floor(pickedPoint.z),
+      x: Math.floor(pickedPoint.x + 0.5),
+      y: Math.floor(pickedPoint.z + 0.5),
     };
   };
 
@@ -93,36 +95,45 @@ export default async (canvas, entities: Entity[]) => {
   let activeMesh: Mesh;
   let scope: LinesMesh;
 
+  const onPointerMove = () => {
+    const projected = getProjectedPosition();
+
+    const { pickedMesh } = scene.pick(scene.pointerX, scene.pointerY);
+
+    targetCell.visibility = 1;
+
+    log(projected);
+
+    const position = unproject(projected);
+
+    if (
+      targetCell.position.x !== position.x ||
+      targetCell.position.z !== position.z
+    ) {
+      if (activeMesh) {
+        activeMesh.material.alpha = 1;
+      }
+      activeMesh = interactiveMeshes.find((interactiveMesh) => {
+        return (
+          interactiveMesh.position.x === projected.x &&
+          interactiveMesh.position.z === projected.y
+        );
+      });
+      setPositionToMesh(targetCell, position);
+
+      if (activeMesh) {
+        activeMesh.material.alpha = 0.5;
+        // targetCell.visibility = 0;
+        emitter.emit(Event.BattleEntityMouseIn, activeMesh.metadata.entity);
+      } else {
+        emitter.emit(Event.BattleEntityMouseOut);
+      }
+    }
+  };
+
   const inputCallback = (pointerInfo) => {
     match(pointerInfo.type)
-      .with(BABYLON.PointerEventTypes.POINTERMOVE, () => {
-        const projected = getProjectedPosition();
-
-        const { pickedMesh } = scene.pick(scene.pointerX, scene.pointerY);
-
-        targetCell.visibility = 1;
-        // emitter.emit(Event.BattleEntityMouseIn, undefined);
-
-        activeMesh = interactiveMeshes.find((interactiveMesh) => {
-          return (
-            interactiveMesh.position.x - 0.5 === projected.x &&
-            interactiveMesh.position.z - 0.5 === projected.y
-          );
-        });
-
-        log(projected);
-
-        const position = unproject(projected);
-        setPositionToMesh(targetCell, position);
-
-        if (activeMesh) {
-          activeMesh.material.alpha = 0.5;
-          targetCell.visibility = 0;
-          emitter.emit(Event.BattleEntityMouseIn, activeMesh.metadata.entity);
-        } else {
-          // emitter.emit(Event.BattleEntityMouseIn, undefined);
-        }     
-      })
+      .with(BABYLON.PointerEventTypes.POINTERMOVE, onPointerMove)
       .with(BABYLON.PointerEventTypes.POINTERUP, () => {
         emitter.emit(Event.BattleEntityTarget, activeMesh.metadata.entity);
         activeMesh.material.alpha = 1;
@@ -208,9 +219,11 @@ export default async (canvas, entities: Entity[]) => {
 
   emitter.on(Event.BattleSpellClick, handleSpellClick);
 
-  emitter.on(Event.BattleEntityDeath, (entity: Entity) => {
+  emitter.on(Event.BattleEntityDeath, (entity: number) => {
     const meshIndex = getIndexByEntity(interactiveMeshes, entity);
     const [removed] = interactiveMeshes.splice(meshIndex, 1);
+    console.log(entity, removed);
+    
     removed.dispose();
   });
 

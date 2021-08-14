@@ -8,12 +8,13 @@ import { unproject } from "./coordinates";
 import { createEntityMaterials } from "./materials";
 
 export const setPositionToMesh = (mesh: Mesh, position: Vector3) => {
-  mesh.position.x = position.x + 0.5;
+  mesh.position.x = position.x;
   mesh.position.y = position.y;
-  mesh.position.z = position.z + 0.5;
+  mesh.position.z = position.z;
 };
 
 export const importMesh = async (type: string, scene: Scene) => {
+  // return Mesh.CreateBox(type, 1, scene);
   const result = await SceneLoader.ImportMeshAsync(
     "",
     "/meshes/",
@@ -28,16 +29,6 @@ export const createMeshesFromEntities = async (
   entities: Entity[],
   scene: Scene,
 ) => {
-  // const result = await SceneLoader.ImportMeshAsync(
-  //   "",
-  //   // "https://assets.babylonjs.com/meshes/",
-  //   // "HVGirl.glb",
-  //   "/meshes/",
-  //   "idle.glb",
-  //   scene,
-  // );
-  // const [dummy] = result.meshes;
-
   const { materialAlly, materialEnemy, materialPlayer } =
     createEntityMaterials(scene);
   return Promise.all(
@@ -45,30 +36,22 @@ export const createMeshesFromEntities = async (
       match(entity)
         .with(instanceOf(Player), async () => {
           const playerMesh = await importMesh("Player", scene);
-          // console.log(dummy);
-
-          // const playerMesh = dummy.clone("player", null) as Mesh;
-          // console.log(playerMesh);
-
-          // playerMesh.isVisible = true;
-
           playerMesh.material = materialPlayer;
-          playerMesh.metadata = { entity: index };
+          playerMesh.metadata = { entity };
           setPositionToMesh(playerMesh, unproject(entity.getPosition()));
           return playerMesh;
         })
         .with(instanceOf(Enemy), async () => {
           const enemyMesh = await importMesh("Enemy", scene);
-          // const enemyMesh = Mesh.CreateBox(`enemy${index}`, 1, scene);
           enemyMesh.material = materialEnemy;
-          enemyMesh.metadata = { entity: index };
+          enemyMesh.metadata = { entity };
           setPositionToMesh(enemyMesh, unproject(entity.getPosition()));
           return enemyMesh;
         })
         .with(instanceOf(Ally), async () => {
           const allyMesh = await importMesh("Ally", scene);
           allyMesh.material = materialAlly;
-          allyMesh.metadata = { entity: index };
+          allyMesh.metadata = { entity };
           setPositionToMesh(allyMesh, unproject(entity.getPosition()));
           return allyMesh;
         })
@@ -80,5 +63,5 @@ export const createMeshesFromEntities = async (
 export const getByEntity = (meshes: Mesh[], entity: Entity) =>
   meshes.find((mesh) => mesh.metadata.entity === entity);
 
-export const getIndexByEntity = (meshes: Mesh[], entity: Entity) =>
+export const getIndexByEntity = (meshes: Mesh[], entity: number) =>
   meshes.findIndex((mesh) => mesh.metadata.entity === entity);

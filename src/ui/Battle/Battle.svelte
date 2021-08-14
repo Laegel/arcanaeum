@@ -26,8 +26,7 @@
     const entityRemoved = virtualTurns.shift();
     virtualTurns.push(entityRemoved);
     turns = [...virtualTurns];
-
-    emitter.emit(Event.BattleStartTurn, entities.findIndex(entity => entity.getName() === turns[0].getName()));
+    emitter.emit(Event.BattleStartTurn, turns[0]);
   };
 
   const player = new Player("Player", 100, 100, { x: 0, y: 0 });
@@ -42,7 +41,7 @@
 
   onMount(async () => {
     await launch(canvasTarget, entities);
-    emitter.emit(Event.BattleStartTurn, 0);
+    emitter.emit(Event.BattleStartTurn, turns[0]);
   });
 
   onDestroy(() => {
@@ -50,10 +49,12 @@
   });
 
   let hoveredEntity: Entity;
-  emitter.on(Event.BattleEntityMouseIn, (entity: number) => {
-    console.log(entity, entities[entity]);
-    
-    hoveredEntity = entities[entity];
+  emitter.on(Event.BattleEntityMouseIn, (entity: Entity) => {
+    hoveredEntity = entity;
+  });
+
+  emitter.on(Event.BattleEntityMouseOut, () => {
+    hoveredEntity = undefined;
   });
 
   emitter.on(Event.BattleEntityTarget, (entity: Entity) => {
@@ -67,7 +68,7 @@
   <canvas bind:this={canvasTarget} />
 
   <Turns turns={turns}/>
-  
+
   {#if hoveredEntity}
     <EntityDetails entity={hoveredEntity}/>
   {/if}
