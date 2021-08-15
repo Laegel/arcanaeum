@@ -29,9 +29,34 @@
     emitter.emit(Event.BattleStartTurn, turns[0]);
   };
 
-  const player = new Player("Player", 100, 100, { x: 0, y: 0 });
-  const ally = new Ally("Ally", 100, 100, { x: 2, y: 2 });
-  const enemy = new Enemy("Enemy", 100, 100, { x: -4, y: -1 });
+  const elementalDividers = {
+    HealSingleTarget: 0,
+    ElementalDamageSingleTarget: 0,
+    ElementalShieldSingleTarget: 0,
+    ElementalTrapSingleTarget: 0,
+    StatusApplySingleTarget: 0,
+    StatusCureSingleTarget: 0,
+    RepulseSingleTarget: 0,
+    AttractSingleTarget: 0,
+    ElementalDamageSingleTargetArea: 0,
+    ElementalDamageAround: 0,
+  }
+  const elementalMultipliers = {
+    HealSingleTarget: 0,
+    ElementalDamageSingleTarget: 0,
+    ElementalShieldSingleTarget: 0,
+    ElementalTrapSingleTarget: 0,
+    StatusApplySingleTarget: 0,
+    StatusCureSingleTarget: 0,
+    RepulseSingleTarget: 0,
+    AttractSingleTarget: 0,
+    ElementalDamageSingleTargetArea: 0,
+    ElementalDamageAround: 0,
+  }
+
+  const player = new Player("Player", 100, 100, { x: 0, y: 0 }, 10, 10, elementalMultipliers, elementalDividers);
+  const ally = new Ally("Ally", 100, 100, { x: 2, y: 2 }, 10, 10, elementalMultipliers, elementalDividers);
+  const enemy = new Enemy("Enemy", 100, 100, { x: -4, y: -1 }, 10, 10, elementalMultipliers, elementalDividers);
 
   const entities = [
     player, ally, enemy

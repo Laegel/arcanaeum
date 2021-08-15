@@ -2,7 +2,7 @@ import * as BABYLON from "@babylonjs/core";
 import { Scene, Vector2, Vector3, Mesh, LinesMesh } from "@babylonjs/core";
 import "@babylonjs/inspector";
 import { GridMaterial } from "@babylonjs/materials";
-import emitter, { Event } from "../uiToScene";
+import emitter, { Event as UiToSceneEvent } from "../uiToScene";
 import { match, __ } from "ts-pattern";
 import type { Spell } from "../types/spells";
 import {
@@ -11,7 +11,7 @@ import {
   setPositionToMesh,
 } from "./utils/mesh";
 import { applyZoom } from "./utils/camera";
-import type { Entity } from "../data/entity";
+import { Entity, Event as EntityEvent } from "../data/entity";
 import { unproject } from "./utils/coordinates";
 
 export default async (canvas, entities: Entity[]) => {
@@ -51,7 +51,7 @@ export default async (canvas, entities: Entity[]) => {
 
   let currentlyPlayingMesh: Mesh;
 
-  emitter.on(Event.BattleStartTurn, (entity: Entity) => {
+  emitter.on(UiToSceneEvent.BattleStartTurn, (entity: Entity) => {
     if (scope) {
       scope.dispose();
     }
@@ -123,10 +123,9 @@ export default async (canvas, entities: Entity[]) => {
 
       if (activeMesh) {
         activeMesh.material.alpha = 0.5;
-        // targetCell.visibility = 0;
-        emitter.emit(Event.BattleEntityMouseIn, activeMesh.metadata.entity);
+        emitter.emit(UiToSceneEvent.BattleEntityMouseIn, activeMesh.metadata.entity);
       } else {
-        emitter.emit(Event.BattleEntityMouseOut);
+        emitter.emit(UiToSceneEvent.BattleEntityMouseOut);
       }
     }
   };
@@ -135,9 +134,10 @@ export default async (canvas, entities: Entity[]) => {
     match(pointerInfo.type)
       .with(BABYLON.PointerEventTypes.POINTERMOVE, onPointerMove)
       .with(BABYLON.PointerEventTypes.POINTERUP, () => {
-        emitter.emit(Event.BattleEntityTarget, activeMesh.metadata.entity);
+        emitter.emit(UiToSceneEvent.BattleEntityTarget, activeMesh.metadata.entity);
         activeMesh.material.alpha = 1;
         activeMesh = undefined;
+        targetCell.visibility = 0;
       })
       .otherwise(() => {});
   };
@@ -217,15 +217,16 @@ export default async (canvas, entities: Entity[]) => {
     }
   };
 
-  emitter.on(Event.BattleSpellClick, handleSpellClick);
+  emitter.on(UiToSceneEvent.BattleSpellClick, handleSpellClick);
 
-  emitter.on(Event.BattleEntityDeath, (entity: number) => {
-    const meshIndex = getIndexByEntity(interactiveMeshes, entity);
-    const [removed] = interactiveMeshes.splice(meshIndex, 1);
-    console.log(entity, removed);
-    
-    removed.dispose();
-  });
+  entities.forEach(entity => {
+    entity.on(EntityEvent.Death, ((entity) => () => {
+      const meshIndex = getIndexByEntity(interactiveMeshes, entity);
+      const [removed] = interactiveMeshes.splice(meshIndex, 1);
+
+      removed.dispose();
+    })(entity));
+  })
 
   engine.runRenderLoop(function () {
     if (scene && scene.activeCamera) {

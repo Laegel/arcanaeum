@@ -39,6 +39,8 @@ export const createMeshesFromEntities = async (
           playerMesh.material = materialPlayer;
           playerMesh.metadata = { entity };
           setPositionToMesh(playerMesh, unproject(entity.getPosition()));
+          playerMesh.rotationQuaternion = null;
+          playerMesh.rotation.y = Math.PI / 2;
           return playerMesh;
         })
         .with(instanceOf(Enemy), async () => {
@@ -46,6 +48,8 @@ export const createMeshesFromEntities = async (
           enemyMesh.material = materialEnemy;
           enemyMesh.metadata = { entity };
           setPositionToMesh(enemyMesh, unproject(entity.getPosition()));
+          enemyMesh.rotationQuaternion = null;
+          enemyMesh.rotation.y = -Math.PI / 2;
           return enemyMesh;
         })
         .with(instanceOf(Ally), async () => {
@@ -53,6 +57,8 @@ export const createMeshesFromEntities = async (
           allyMesh.material = materialAlly;
           allyMesh.metadata = { entity };
           setPositionToMesh(allyMesh, unproject(entity.getPosition()));
+          allyMesh.rotationQuaternion = null;
+          allyMesh.rotation.y = Math.PI / 3;
           return allyMesh;
         })
         .exhaustive(),
@@ -63,5 +69,5 @@ export const createMeshesFromEntities = async (
 export const getByEntity = (meshes: Mesh[], entity: Entity) =>
   meshes.find((mesh) => mesh.metadata.entity === entity);
 
-export const getIndexByEntity = (meshes: Mesh[], entity: number) =>
+export const getIndexByEntity = (meshes: Mesh[], entity: Entity) =>
   meshes.findIndex((mesh) => mesh.metadata.entity === entity);
