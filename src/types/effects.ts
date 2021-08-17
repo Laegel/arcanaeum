@@ -6,12 +6,18 @@ export interface Potency {
   value: number;
 }
 
+export interface EffectApplicationDetails {
+  caster: Entity;
+  target: Entity;
+  value: number;
+}
+
 export interface EffectDefinition {
   icon: string;
   potency: { [key in PotencyLevel]: Potency };
   apply: (
     effect: ConsumableEffect,
-  ) => (caster: Entity, targets: Entity[]) => void;
+  ) => (caster: Entity, targets: Entity[]) => EffectApplicationDetails[];
 }
 
 export interface Effect extends EffectDefinition {

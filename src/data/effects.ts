@@ -5,7 +5,6 @@ import type { Element } from "./spells";
 
 export interface ConsumableEffect {
   type: keyof typeof basicEffects;
-  baseDamage: number;
   level: number;
   element: Element;
 }
@@ -21,8 +20,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -30,8 +29,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   ElementalDamageSingleTarget: {
@@ -43,17 +46,22 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     },
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
-        targets.forEach((target) =>
-          target.updateHealth(
+        const currentEffect = basicEffects[effect.type];
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
-                effect.baseDamage * effect.level,
+                currentEffect.potency[effect.level].value,
                 effect.element,
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   ElementalShieldSingleTarget: {
@@ -66,8 +74,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -75,8 +83,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   ElementalTrapSingleTarget: {
@@ -89,8 +101,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -98,8 +110,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   StatusApplySingleTarget: {
@@ -112,8 +128,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -121,8 +137,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   StatusCureSingleTarget: {
@@ -135,8 +155,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -144,8 +164,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   RepulseSingleTarget: {
@@ -158,8 +182,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -167,8 +191,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   AttractSingleTarget: {
@@ -181,8 +209,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -190,8 +218,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   ElementalDamageSingleTargetArea: {
@@ -204,8 +236,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -213,8 +245,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
   ElementalDamageAround: {
@@ -227,8 +263,8 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
-        targets.forEach((target) =>
-          target.updateHealth(
+        return targets.map((target) => {
+          const value = target.processSpellValue(
             target.receiveSpell(
               caster.castSpell(
                 currentEffect.potency[effect.level].value,
@@ -236,8 +272,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
               ),
               effect.element,
             ),
-          ),
-        );
+          );
+          target.updateHealth(value);
+          return {
+            caster, target, value
+          };
+        });
       },
   },
 };

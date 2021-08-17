@@ -2,6 +2,7 @@ import type { SpellPattern } from "../types/spells";
 import { match, __ } from "ts-pattern";
 import type { Entity } from "./entity";
 import basicEffects, { ConsumableEffect } from "./effects";
+import type { Spell } from "../types/spells";
 
 export enum Element {
   Fire,
@@ -15,6 +16,32 @@ export enum Element {
   Wood,
   Steam,
 }
+
+export const elementalDividers = {
+  Fire: 1,
+  Water: 1,
+  Earth: 1,
+  Wind: 1,
+  Sandstorm: 1,
+  Metal: 1,
+  Blizzard: 1,
+  Lightning: 1,
+  Wood: 1,
+  Steam: 1,
+};
+
+export const elementalMultipliers = {
+  Fire: 1,
+  Water: 1,
+  Earth: 1,
+  Wind: 1,
+  Sandstorm: 1,
+  Metal: 1,
+  Blizzard: 1,
+  Lightning: 1,
+  Wood: 1,
+  Steam: 1,
+};
 
 export default {
   singleTarget: {},
@@ -56,13 +83,21 @@ export const patterns: SpellPattern[] = [
   patternFive,
 ];
 
-const cast = (spell, caster, targets) => {
-  spell.effects.foreach((effect) => applyEffect(effect)(caster, targets));
+export const cast = (spell: Spell, caster, targets) => {
+  const details = spell.effects.map((effect) => {
+    const consumableEffect = {
+      type: effect,
+      level: 0,
+      element: Element.Fire,
+    };
+    return applyEffect(consumableEffect)(caster, targets);
+  });
 
   targets.forEach((target) => triggerSideEffects(spell.effects[0], target));
+  return details;
 };
 
-const applyEffect = (effect: ConsumableEffect) =>
+export const applyEffect = (effect: ConsumableEffect) =>
   basicEffects[effect.type].apply(effect);
 
 // effect.type:

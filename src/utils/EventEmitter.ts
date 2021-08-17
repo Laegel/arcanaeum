@@ -15,7 +15,7 @@ export default class EventEmitter<T extends string | number> {
   public off(name: T, listenerToRemove: Listener) {
     if (!this.events[name]) {
       throw new Error(
-        `Can't remove a listener. Event "${name}" doesn't exits.`,
+        `Can't remove a listener. Event "${this.constructor.name}:${name}" doesn't exist.`,
       );
     }
 
@@ -24,14 +24,18 @@ export default class EventEmitter<T extends string | number> {
     this.events[name] = this.events[name].filter(filterListeners);
   }
 
-  public clear(name: T) {
-    delete this.events[name];
+  public clear(name?: T) {
+    if (name) {
+      delete this.events[name];
+    } else {
+      this.events = {};
+    }
   }
 
   public emit(name: T, data?: any) {
     if (!this.events[name]) {
       console.warn(
-        `Can't emit an event. Event "${name}" doesn't exits.`,
+        `Can't emit an event. Event "${this.constructor.name}:${name}" doesn't exist.`,
       );
       return;
     }

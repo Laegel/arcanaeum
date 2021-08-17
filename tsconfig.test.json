@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "types": [
+      "babylonjs", "node",
+      "jest"
+    ]
+  },
+  "include": [
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules/*",
+    "__sapper__/*",
+    "public/*"
+  ]
+}

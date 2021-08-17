@@ -38,9 +38,10 @@ Crafting slots per effect rune level:
 - Apply a shield
 - Cure status
 - Dash to a given cell
-- Heal
 - Turn invisible
 - Summon an elemental creature
+
+Multiple effects are cast by following the entity (e.g. it moved) unless it goes out of scope (too far, behind something, too close)
 
 
 #### Passive
@@ -55,10 +56,11 @@ Crafting slots per effect rune level:
 - Incoming {Element} damage will be reflected as {Element} damage
 - 10% chance to reduce by {x}% incoming damage
 - Grants Omniscient effect for {x} turns
-- Incoming {Element} damage, trigger
+- Incoming {Element} damage trigger {x}% {Spell} effect 
 - Dying triggers {x}% {Spell} effect 
 - Being moved triggers {Spell}
 - After dying, will resurrect after {x} turns if the battle is not finished
+- Turn {Element} damage into healing?
 
 ## Equipment
 
@@ -117,7 +119,7 @@ It's still possible to heal a status from a higher level than a heal spell but p
 Elemental
 - Fire: Burning => take damage each turn and illuminate surrounding cases
 - Water: Mutism => cannot cast a spell
-- Earth: Petrified => cannot do any action until healed (takes 3 turns to turn into - stone)
+- Earth: Petrified => cannot do any action until cured (takes 3 turns to turn into - stone)
 - Wind: Slow => movement is reduced
 - Sandstorm: Blind => UI becomes blurry (at least the field), AI should remember or deduce where you were or do a defensive action
 - Metal: Bleeding => take damage each turn
@@ -166,7 +168,6 @@ Action:
 repulse
 attract
 deal damage
-heal
 cure status
 
 Target:
@@ -181,12 +182,11 @@ Visual effect editor: lets crafters define what cells can be targetted (only wor
 A new effect can be made from two effects, but the final effect will not be as powerful as a single one.
 During the creation phase, a modifying rune can be added to the mix to provide additional effect.
 
-heal a target
 deal elemental damage to a target
 set an elemental shield to a target
 set an elemental trap to a target
 apply status to a target
-heal status to a target
+cure status to a target
 move a target away of the player
 drag a target towards the player
 deal elemental damage in a target zone

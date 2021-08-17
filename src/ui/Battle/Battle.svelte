@@ -1,24 +1,41 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+
   import { spells } from "../../storage";
+  import { basicSpellsList } from "../../types/spells";
+  import { effects } from "../../storage";
+  import basicEffects from "../../data/effects";
   import Slot from "../components/Slot.svelte";
   import launch from "../../scenes/babylon";
-  import emitter, { Event } from "../../uiToScene";
-  import { basicSpellsList } from "../../types/spells";
-  import { Ally, Entity, Enemy, Player } from "../../data/entity";
+  import emitter, { UiToSceneEvent } from "../../uiToScene";
+  import { Ally, Entity, Enemy, Player, Event as EntityEvent } from "../../data/entity";
   import EntityDetails from "./components/EntityDetails.svelte";
   import Turns from "./components/Turns.svelte";
+  import { applyEffect, cast, Element, elementalDividers, elementalMultipliers } from "../../data/spells";
+  import type entity from "../../types/entity";
+  import Results from "./components/Results.svelte";
+  import Logs from "./components/Logs.svelte";
 
   const getAllSpells = async () => {
     const createdSpells = await spells.toArray();
     return [...basicSpellsList, ...createdSpells];
   };
 
-  const spellsPromise = getAllSpells();
-  let canvasTarget;
+  const getAllEffects = async () => {
+    const createdEffects = await effects.toArray();
+    return {...basicEffects, ...Object.fromEntries(createdEffects.map(effect => [effect.name, effect]))};
+  };
 
+  const spellsPromise = getAllSpells();
+  const effectsPromise = getAllEffects();
+  let canvasTarget;
+  let showResults = false;
+
+  let currentSpell;
   const handleClickSpell = (spell) => {
-    emitter.emit(Event.BattleSpellClick, spell);
+    currentSpell = spell;
+    emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
+    emitter.emit(UiToSceneEvent.BattleSpellClick, spell);
   };
 
   const handleTurns = () => {
@@ -26,37 +43,12 @@
     const entityRemoved = virtualTurns.shift();
     virtualTurns.push(entityRemoved);
     turns = [...virtualTurns];
-    emitter.emit(Event.BattleStartTurn, turns[0]);
+    emitter.emit(UiToSceneEvent.BattleStartTurn, turns[0]);
   };
 
-  const elementalDividers = {
-    HealSingleTarget: 0,
-    ElementalDamageSingleTarget: 0,
-    ElementalShieldSingleTarget: 0,
-    ElementalTrapSingleTarget: 0,
-    StatusApplySingleTarget: 0,
-    StatusCureSingleTarget: 0,
-    RepulseSingleTarget: 0,
-    AttractSingleTarget: 0,
-    ElementalDamageSingleTargetArea: 0,
-    ElementalDamageAround: 0,
-  }
-  const elementalMultipliers = {
-    HealSingleTarget: 0,
-    ElementalDamageSingleTarget: 0,
-    ElementalShieldSingleTarget: 0,
-    ElementalTrapSingleTarget: 0,
-    StatusApplySingleTarget: 0,
-    StatusCureSingleTarget: 0,
-    RepulseSingleTarget: 0,
-    AttractSingleTarget: 0,
-    ElementalDamageSingleTargetArea: 0,
-    ElementalDamageAround: 0,
-  }
-
-  const player = new Player("Player", 100, 100, { x: 0, y: 0 }, 10, 10, elementalMultipliers, elementalDividers);
-  const ally = new Ally("Ally", 100, 100, { x: 2, y: 2 }, 10, 10, elementalMultipliers, elementalDividers);
-  const enemy = new Enemy("Enemy", 100, 100, { x: -4, y: -1 }, 10, 10, elementalMultipliers, elementalDividers);
+  const player = new Player("Player", 100, 100, { x: 0, y: 0 }, 10, 5, 3, elementalMultipliers, {...elementalDividers, [Element[Element.Fire]]: -2});
+  const ally = new Ally("Ally", 100, 100, { x: 2, y: 2 }, 10, 5, 3, elementalMultipliers, elementalDividers);
+  const enemy = new Enemy("Enemy", 100, 100, { x: -4, y: -1 }, 1, 1, 1, elementalMultipliers, elementalDividers);
 
   const entities = [
     player, ally, enemy
@@ -66,47 +58,98 @@
 
   onMount(async () => {
     await launch(canvasTarget, entities);
-    emitter.emit(Event.BattleStartTurn, turns[0]);
+    emitter.emit(UiToSceneEvent.BattleStartTurn, turns[0]);
   });
 
   onDestroy(() => {
-    emitter.clear(Event.BattleSpellClick);
+    emitter.clear(UiToSceneEvent.BattleSpellClick);
+
+    entities.forEach((entity) => {
+      entity.clear();
+    });
   });
 
   let hoveredEntity: Entity;
-  emitter.on(Event.BattleEntityMouseIn, (entity: Entity) => {
+  emitter.on(UiToSceneEvent.BattleEntityMouseIn, (entity: Entity) => {
     hoveredEntity = entity;
   });
 
-  emitter.on(Event.BattleEntityMouseOut, () => {
+  emitter.on(UiToSceneEvent.BattleEntityMouseOut, () => {
     hoveredEntity = undefined;
   });
 
-  emitter.on(Event.BattleEntityTarget, (entity: Entity) => {
-    player.castOn(100, entity);
-    emitter.emit(Event.BattleSpellClick, undefined);
+  let logs = [];
+  emitter.on(UiToSceneEvent.BattleEntityTarget, (entity: Entity) => {
+    const details = cast(currentSpell, player, [entity]);
+    details.forEach(line => line.forEach(({caster, target, value}) => logs = [...logs, `${caster.getName()} cast ${currentSpell.name} on ${target.getName()} for ${value} points.`]));
+    emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
     handleTurns();
+  });
+
+  entities.forEach((entity) => {
+    entity.on(
+      EntityEvent.Death,
+      () => {
+        const enemiesRemain = !!entities.find(
+          (entity) => entity instanceof Enemy && entity.getCurrentHealth() !== 0,
+        );
+        const alliesRemain = !!entities.find(
+          (entity) =>  
+            (entity instanceof Player && entity.getCurrentHealth() !== 0) ||
+            (entity instanceof Ally && entity.getCurrentHealth() !== 0),
+        );
+
+        if (!enemiesRemain) {
+          console.log("enemies defeated");
+          showResults = true;
+          entities.forEach((entity) => {
+            entity.clear();
+          });
+        } else if (!alliesRemain) {
+          console.log("allies defeated");
+          showResults = true;
+          entities.forEach((entity) => {
+            entity.clear();
+          });
+        }
+      },
+    );
+
+    entity.on(EntityEvent.RequestMovementPermission, (movementPoints) => {
+      
+    });
+
+    entity.on(EntityEvent.Move, () => {
+
+    });
   });
 </script>
 
 <div>
-  <canvas bind:this={canvasTarget} />
+  <div class="relative">
+    {#if showResults}
+      <Results />
+    {:else}
+      <canvas bind:this={canvasTarget} />
 
-  <Turns turns={turns}/>
+      <Turns turns={turns}/>
 
-  {#if hoveredEntity}
-    <EntityDetails entity={hoveredEntity}/>
-  {/if}
+      {#if hoveredEntity}
+        <EntityDetails entity={hoveredEntity}/>
+      {/if}
 
-  <div class="">
-    <!-- fixed bottom-0 z-10 -->
-    {#await spellsPromise}
-      ...
-    {:then spells}
-      {#each spells as spell}
-        <Slot item={spell} on:click={() => handleClickSpell(spell)} />
-      {/each}
-    {/await}
+      <div class="">
+        <!-- fixed bottom-0 z-10 -->
+        {#await Promise.all([spellsPromise, effectsPromise])}
+          ...
+        {:then [spells, effects]}
+          {#each spells as spell}
+            <Slot item={{...spell, icon: effects[spell.effects[0]].icon}} on:click={() => handleClickSpell(spell)} />
+          {/each}
+        {/await}
+      </div>
+      <Logs logs={logs}/>
+    {/if}
   </div>
 
 </div>

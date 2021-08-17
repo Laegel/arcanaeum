@@ -1,6 +1,6 @@
 import EventEmitter from "../utils/EventEmitter";
 
-export enum Event {
+export enum UiToSceneEvent {
   BattleZoom,
   BattleSpellClick,
   BattleEntityMouseIn,
@@ -9,7 +9,7 @@ export enum Event {
   BattleStartTurn,
 }
 
-class UIToScene extends EventEmitter<Event> { }
+class UIToScene extends EventEmitter<UiToSceneEvent> { }
 
 const emitter = new UIToScene();
 

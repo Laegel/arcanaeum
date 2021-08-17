@@ -2,8 +2,8 @@ import * as BABYLON from "@babylonjs/core";
 import { Scene, Vector2, Vector3, Mesh, LinesMesh } from "@babylonjs/core";
 import "@babylonjs/inspector";
 import { GridMaterial } from "@babylonjs/materials";
-import emitter, { Event as UiToSceneEvent } from "../uiToScene";
-import { match, __ } from "ts-pattern";
+import emitter, { UiToSceneEvent } from "../uiToScene";
+import { instanceOf, match, __ } from "ts-pattern";
 import type { Spell } from "../types/spells";
 import {
   createMeshesFromEntities,
@@ -11,8 +11,14 @@ import {
   setPositionToMesh,
 } from "./utils/mesh";
 import { applyZoom } from "./utils/camera";
-import { Entity, Event as EntityEvent } from "../data/entity";
-import { unproject } from "./utils/coordinates";
+import {
+  Ally,
+  Enemy,
+  Entity,
+  Event as EntityEvent,
+  Player,
+} from "../data/entity";
+import { unproject, project } from "./utils/coordinates";
 
 export default async (canvas, entities: Entity[]) => {
   const engine = new BABYLON.Engine(canvas, true, {
@@ -53,9 +59,9 @@ export default async (canvas, entities: Entity[]) => {
 
   emitter.on(UiToSceneEvent.BattleStartTurn, (entity: Entity) => {
     if (scope) {
-      scope.dispose();
+      resetSelectedSpell();
     }
-    
+
     currentlyPlayingMesh = interactiveMeshes.find(
       (interactiveMesh) => interactiveMesh.metadata.entity === entity,
     );
@@ -123,18 +129,62 @@ export default async (canvas, entities: Entity[]) => {
 
       if (activeMesh) {
         activeMesh.material.alpha = 0.5;
-        emitter.emit(UiToSceneEvent.BattleEntityMouseIn, activeMesh.metadata.entity);
+        emitter.emit(
+          UiToSceneEvent.BattleEntityMouseIn,
+          activeMesh.metadata.entity,
+        );
       } else {
         emitter.emit(UiToSceneEvent.BattleEntityMouseOut);
       }
     }
   };
 
-  const inputCallback = (pointerInfo) => {
+  const isPositionFree = (position: Vector3) =>
+    !interactiveMeshes.find(
+      (interactiveMesh) =>
+        interactiveMesh.position.x === position.x &&
+        interactiveMesh.position.z === position.z,
+    );
+
+  const prepareEntityMovement = (pointerInfo) => {
+    match(pointerInfo.type)
+      .with(BABYLON.PointerEventTypes.POINTERMOVE, () => {})
+      .with(BABYLON.PointerEventTypes.POINTERUP, () => {
+        const projected = getProjectedPosition();
+        const position = unproject(projected);
+        currentlyPlayingMesh.metadata.entity.emit(
+          EntityEvent.Move,
+          currentlyPlayingMesh.metadata.entity,
+        );
+        const currentPosition = currentlyPlayingMesh.position;
+        const currentProjectedPosition = project(currentPosition);
+        const cellsAmount =
+          Math.abs(currentPosition.x - position.x) +
+          Math.abs(currentPosition.z - position.z);
+        console.log(cellsAmount, currentPosition, position);
+
+        if (isPositionFree(position)) {
+          currentlyPlayingMesh.position = position;
+
+          currentlyPlayingMesh.metadata.entity.emit(
+            EntityEvent.Move,
+            currentlyPlayingMesh.metadata.entity,
+          );
+        }
+      })
+      .otherwise(() => {});
+  };
+  scene.onPointerObservable.add(prepareEntityMovement);
+
+  const prepareSpellCasting = (pointerInfo) => {
+    scene.onPointerObservable.removeCallback(prepareEntityMovement);
     match(pointerInfo.type)
       .with(BABYLON.PointerEventTypes.POINTERMOVE, onPointerMove)
       .with(BABYLON.PointerEventTypes.POINTERUP, () => {
-        emitter.emit(UiToSceneEvent.BattleEntityTarget, activeMesh.metadata.entity);
+        emitter.emit(
+          UiToSceneEvent.BattleEntityTarget,
+          activeMesh.metadata.entity,
+        );
         activeMesh.material.alpha = 1;
         activeMesh = undefined;
         targetCell.visibility = 0;
@@ -208,25 +258,48 @@ export default async (canvas, entities: Entity[]) => {
     return shape;
   };
 
-  const handleSpellClick = (spell?: Spell) => {
+  const resetSelectedSpell = () => {
+    scope.dispose();
+    scene.onPointerObservable.removeCallback(prepareSpellCasting);
+    setTimeout(() => {
+      scene.onPointerObservable.add(prepareEntityMovement);
+    }, 100);
+  };
+
+  const handleClickSpell = (spell?: Spell) => {
     if (spell) {
       scope = drawScope(currentlyPlayingMesh.position, spell.scope);
-      scene.onPointerObservable.add(inputCallback);
-    } else {
-      scene.onPointerObservable.removeCallback(inputCallback);
+      scene.onPointerObservable.add(prepareSpellCasting);
+    } else if (scope) {
+      resetSelectedSpell();
     }
   };
 
-  emitter.on(UiToSceneEvent.BattleSpellClick, handleSpellClick);
+  emitter.on(UiToSceneEvent.BattleSpellClick, handleClickSpell);
 
-  entities.forEach(entity => {
-    entity.on(EntityEvent.Death, ((entity) => () => {
+  entities.forEach((entity) => {
+    entity.on(EntityEvent.Death, (entity) => {
       const meshIndex = getIndexByEntity(interactiveMeshes, entity);
       const [removed] = interactiveMeshes.splice(meshIndex, 1);
+      const currentEntities = interactiveMeshes.map(
+        (mesh) => mesh.metadata.entity,
+      );
 
+      const enemiesRemain = !!currentEntities.find(
+        (entity) => entity instanceof Enemy && entity.getCurrentHealth() !== 0,
+      );
+      const alliesRemain = !!currentEntities.find(
+        (entity) =>
+          (entity instanceof Player && entity.getCurrentHealth() !== 0) ||
+          (entity instanceof Ally && entity.getCurrentHealth() !== 0),
+      );
+
+      if (!enemiesRemain || !alliesRemain) {
+        scene.animationsEnabled = false;
+      }
       removed.dispose();
-    })(entity));
-  })
+    });
+  });
 
   engine.runRenderLoop(function () {
     if (scene && scene.activeCamera) {
