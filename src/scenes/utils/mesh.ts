@@ -7,6 +7,13 @@ import { Entity, Player, Enemy, Ally } from "../../data/entity";
 import { unproject } from "./coordinates";
 import { createEntityMaterials } from "./materials";
 
+export enum Direction {
+  Top,
+  Right,
+  Bottom,
+  Left,
+}
+
 export const setPositionToMesh = (mesh: Mesh, position: Vector3) => {
   mesh.position.x = position.x;
   mesh.position.y = position.y;
@@ -39,8 +46,7 @@ export const createMeshesFromEntities = async (
           playerMesh.material = materialPlayer;
           playerMesh.metadata = { entity };
           setPositionToMesh(playerMesh, unproject(entity.getPosition()));
-          playerMesh.rotationQuaternion = null;
-          playerMesh.rotation.y = Math.PI / 2;
+          setDirection(playerMesh, Direction.Left);
           return playerMesh;
         })
         .with(instanceOf(Enemy), async () => {
@@ -48,8 +54,7 @@ export const createMeshesFromEntities = async (
           enemyMesh.material = materialEnemy;
           enemyMesh.metadata = { entity };
           setPositionToMesh(enemyMesh, unproject(entity.getPosition()));
-          enemyMesh.rotationQuaternion = null;
-          enemyMesh.rotation.y = -Math.PI / 2;
+          setDirection(enemyMesh, Direction.Right);
           return enemyMesh;
         })
         .with(instanceOf(Ally), async () => {
@@ -57,8 +62,7 @@ export const createMeshesFromEntities = async (
           allyMesh.material = materialAlly;
           allyMesh.metadata = { entity };
           setPositionToMesh(allyMesh, unproject(entity.getPosition()));
-          allyMesh.rotationQuaternion = null;
-          allyMesh.rotation.y = Math.PI / 3;
+          setDirection(allyMesh, Direction.Left);
           return allyMesh;
         })
         .exhaustive(),
@@ -71,3 +75,21 @@ export const getByEntity = (meshes: Mesh[], entity: Entity) =>
 
 export const getIndexByEntity = (meshes: Mesh[], entity: Entity) =>
   meshes.findIndex((mesh) => mesh.metadata.entity === entity);
+
+export const setDirection = (mesh: Mesh, direction: Direction) => {
+  mesh.rotationQuaternion = null;
+  switch (direction) {
+    case Direction.Top:
+      mesh.rotation.y = Math.PI;
+      break;
+    case Direction.Right:
+      mesh.rotation.y = -Math.PI / 2;
+      break;
+    case Direction.Bottom:
+      // mesh.rotation.y = Math.PI;
+      break;
+    case Direction.Left:
+      mesh.rotation.y = Math.PI / 2;
+      break;
+  }
+};

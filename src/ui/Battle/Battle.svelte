@@ -80,7 +80,7 @@
 
   let logs = [];
   emitter.on(UiToSceneEvent.BattleEntityTarget, (entity: Entity) => {
-    const details = cast(currentSpell, player, [entity]);
+    const details = cast(currentSpell, turns[0], [entity]);
     details.forEach(line => line.forEach(({caster, target, value}) => logs = [...logs, `${caster.getName()} cast ${currentSpell.name} on ${target.getName()} for ${value} points.`]));
     emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
     handleTurns();

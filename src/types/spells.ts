@@ -14,6 +14,7 @@ export interface Spell {
   effects: string[];
   scope: number;
   targetEntityOnly: boolean;
+  icon: string;
 }
 
 const basicSpells = {

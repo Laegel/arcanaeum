@@ -1,6 +1,6 @@
 import type { EffectDefinition } from "../types/effects";
 import { objectToArray } from "../utils/object";
-import type { Entity } from "./entity";
+import { Entity, Event as EntityEvent } from "./entity";
 import type { Element } from "./spells";
 
 export interface ConsumableEffect {
@@ -210,18 +210,13 @@ const basicEffects: { [key: string]: EffectDefinition } = {
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
         return targets.map((target) => {
-          const value = target.processSpellValue(
-            target.receiveSpell(
-              caster.castSpell(
-                currentEffect.potency[effect.level].value,
-                effect.element,
-              ),
-              effect.element,
-            ),
-          );
-          target.updateHealth(value);
+          target.emit(EntityEvent.AttractionMovement, {
+            caster,
+            target,
+            cells: currentEffect.potency[effect.level].value,
+          });
           return {
-            caster, target, value
+            caster, target, value: 0
           };
         });
       },

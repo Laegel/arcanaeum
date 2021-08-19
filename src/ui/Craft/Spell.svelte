@@ -61,7 +61,7 @@
   };
 
   const handleClickItem = () => {
-    spells.add({ name: spellName, effects: pickedEffect.effects, scope: 5, targetEntityOnly: true });
+    spells.add({ name: spellName, effects: pickedEffect.effects.length ? pickedEffect.effects : [pickedEffect.name], scope: 5, targetEntityOnly: true, icon: pickedEffect.icon });
   };
 
   const getEffectByName = (effects, name) => effects.find(effect => effect.name === name);

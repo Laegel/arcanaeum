@@ -5,6 +5,7 @@ export enum Event {
   Death,
   Move,
   RequestMovementPermission,
+  AttractionMovement,
 }
 
 interface Coordinates {

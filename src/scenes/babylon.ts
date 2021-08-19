@@ -1,5 +1,13 @@
 import * as BABYLON from "@babylonjs/core";
-import { Scene, Vector2, Vector3, Mesh, LinesMesh } from "@babylonjs/core";
+import {
+  Scene,
+  Vector2,
+  Vector3,
+  Mesh,
+  LinesMesh,
+  Animation,
+  Curve3,
+} from "@babylonjs/core";
 import "@babylonjs/inspector";
 import { GridMaterial } from "@babylonjs/materials";
 import emitter, { UiToSceneEvent } from "../uiToScene";
@@ -7,6 +15,7 @@ import { instanceOf, match, __ } from "ts-pattern";
 import type { Spell } from "../types/spells";
 import {
   createMeshesFromEntities,
+  getByEntity,
   getIndexByEntity,
   setPositionToMesh,
 } from "./utils/mesh";
@@ -139,6 +148,76 @@ export default async (canvas, entities: Entity[]) => {
     }
   };
 
+  const animateMeshToCell = (mesh: Mesh, destination: Vector3) => {
+
+    const position = mesh.position;
+    const path: Vector3[] = [];
+    const targetX = Math.abs(position.x - destination.x);
+    const targetZ = Math.abs(position.z - destination.z);
+    const stepX = position.x > destination.x ? -1 : 1;
+    const stepZ = position.z > destination.z ? -1 : 1;
+    let differenceX = 0;
+    while (differenceX < targetX) {
+      ++differenceX;
+      path.push(new Vector3(position.x + differenceX * stepX, 0, position.z));
+    }
+    let differenceZ = 0;
+    while (differenceZ < targetZ) {
+      ++differenceZ;
+      path.push(new Vector3(position.x + differenceX * stepX, 0, position.z + differenceZ * stepZ));
+    }
+
+    const speed = 10;
+    const animationPosition = new BABYLON.Animation(
+      "animPos",
+      "position",
+      speed,
+      BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+      BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE,
+    );
+    const animationRotation = new BABYLON.Animation(
+      "animRot",
+      "rotation",
+      speed,
+      BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+      BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE,
+    );
+    const keysPosition = [];
+    const keysRotation = [];
+
+    let lastPosition = position.clone();
+    for (let p = 0; p < path.length; p++) {
+      keysPosition.push({
+        frame: p,
+        value: path[p],
+      });
+
+      const valueX = lastPosition.x - path[p].x;
+      const valueZ = lastPosition.z - path[p].z;
+      
+      let rotation = Math.PI;
+      if (valueX > 0) {
+        rotation = Math.PI / 2;
+      } else if (valueX < 0) {
+        rotation = -Math.PI / 2;
+      } else if (valueZ > 0) {
+        rotation = 0;
+      } 
+      keysRotation.push({
+        frame: p,
+        value: new Vector3(0, rotation, 0),
+      });
+      lastPosition = path[p];
+    }
+
+    animationPosition.setKeys(keysPosition);
+    animationRotation.setKeys(keysRotation);
+
+    mesh.animations = [animationPosition, animationRotation];
+
+    scene.beginAnimation(mesh, 0, 300, false);
+  };
+
   const isPositionFree = (position: Vector3) =>
     !interactiveMeshes.find(
       (interactiveMesh) =>
@@ -161,10 +240,9 @@ export default async (canvas, entities: Entity[]) => {
         const cellsAmount =
           Math.abs(currentPosition.x - position.x) +
           Math.abs(currentPosition.z - position.z);
-        console.log(cellsAmount, currentPosition, position);
 
         if (isPositionFree(position)) {
-          currentlyPlayingMesh.position = position;
+          animateMeshToCell(currentlyPlayingMesh, position);
 
           currentlyPlayingMesh.metadata.entity.emit(
             EntityEvent.Move,
@@ -299,6 +377,28 @@ export default async (canvas, entities: Entity[]) => {
       }
       removed.dispose();
     });
+
+    entity.on(
+      EntityEvent.AttractionMovement,
+      ({
+        caster,
+        target,
+        cells,
+      }: {
+        caster: Entity;
+        target: Entity;
+        cells: number;
+      }) => {
+        const casterMesh = getByEntity(interactiveMeshes, caster);
+        const targetMesh = getByEntity(interactiveMeshes, target);
+
+        if (casterMesh.position.x === targetMesh.position.x) {
+          targetMesh.position.z += cells * (casterMesh.position.z > targetMesh.position.z ? 1 : -1);
+        } else if (casterMesh.position.z === targetMesh.position.z) {
+          targetMesh.position.x += cells * (casterMesh.position.x > targetMesh.position.x ? 1 : -1);
+        }
+      },
+    );
   });
 
   engine.runRenderLoop(function () {
