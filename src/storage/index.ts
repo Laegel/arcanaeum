@@ -5,7 +5,7 @@ import type { Rune } from "../types/runes";
 import type { Spell } from "../types/spells";
 
 class ArcanaeumDatabase extends Dexie {
-  effects: Dexie.Table<Effect, number>;
+  effects: Dexie.Table<Pick<Effect, 'name' | 'effects'>, number>;
   spells: Dexie.Table<Spell, number>;
   runes: Dexie.Table<Rune, number>;
 

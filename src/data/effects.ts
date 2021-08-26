@@ -1,4 +1,4 @@
-import type { EffectDefinition } from "../types/effects";
+import { EffectDefinition, RangeType, TargetType } from "../types/effects";
 import { objectToArray } from "../utils/object";
 import { Entity, Event as EntityEvent } from "./entity";
 import type { Element } from "./spells";
@@ -10,40 +10,18 @@ export interface ConsumableEffect {
 }
 
 const basicEffects: { [key: string]: EffectDefinition } = {
-  HealSingleTarget: {
-    icon: "heal-jade-1.png",
-    potency: {
-      0: {
-        value: 2,
-      },
-    },
-    apply:
-      (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
-        const currentEffect = basicEffects[effect.type];
-        return targets.map((target) => {
-          const value = target.processSpellValue(
-            target.receiveSpell(
-              caster.castSpell(
-                currentEffect.potency[effect.level].value,
-                effect.element,
-              ),
-              effect.element,
-            ),
-          );
-          target.updateHealth(value);
-          return {
-            caster, target, value
-          };
-        });
-      },
-  },
   ElementalDamageSingleTarget: {
     icon: "beam-blue-1.png",
     potency: {
       0: {
         value: 2,
+        range: {
+          type: RangeType.Single,
+          value: 5,
+        },
       },
     },
+    targetType: TargetType.Entity,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -59,7 +37,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -68,9 +48,14 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     icon: "protect-eerie-1.png",
     potency: {
       0: {
-        value: 2,
+        value: 0,
+        range: {
+          type: RangeType.Single,
+          value: 5,
+        },
       },
     },
+    targetType: TargetType.Entity,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -86,7 +71,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -95,9 +82,14 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     icon: "wind-grasp-eerie-1.png",
     potency: {
       0: {
-        value: 2,
+        value: 1,
+        range: {
+          type: RangeType.Single,
+          value: 5,
+        },
       },
     },
+    targetType: TargetType.Cell,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -113,7 +105,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -122,9 +116,14 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     icon: "light-blue-1.png",
     potency: {
       0: {
-        value: 2,
+        value: 0,
+        range: {
+          type: RangeType.Single,
+          value: 5,
+        },
       },
     },
+    targetType: TargetType.Entity,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -140,7 +139,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -149,9 +150,14 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     icon: "light-blue-1.png",
     potency: {
       0: {
-        value: 2,
+        value: 0,
+        range: {
+          type: RangeType.Single,
+          value: 5,
+        },
       },
     },
+    targetType: TargetType.Entity,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -167,7 +173,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -177,8 +185,13 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        range: {
+          type: RangeType.Cross,
+          value: 2,
+        },
       },
     },
+    targetType: TargetType.Entity,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -194,7 +207,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -204,8 +219,13 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        range: {
+          type: RangeType.Cross,
+          value: 7,
+        },
       },
     },
+    targetType: TargetType.Entity,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -216,7 +236,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
             cells: currentEffect.potency[effect.level].value,
           });
           return {
-            caster, target, value: 0
+            caster,
+            target,
+            value: 0,
           };
         });
       },
@@ -226,8 +248,13 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        range: {
+          type: RangeType.Single,
+          value: 5,
+        },
       },
     },
+    targetType: TargetType.Any,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -243,7 +270,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },
@@ -252,9 +281,14 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     icon: "explosion-sky-2.png",
     potency: {
       0: {
-        value: 2,
+        value: 5,
+        range: {
+          type: RangeType.AroundSelfZone,
+          value: 2,
+        },
       },
     },
+    targetType: TargetType.Ally,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];
@@ -270,7 +304,9 @@ const basicEffects: { [key: string]: EffectDefinition } = {
           );
           target.updateHealth(value);
           return {
-            caster, target, value
+            caster,
+            target,
+            value,
           };
         });
       },

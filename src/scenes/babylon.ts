@@ -1,17 +1,16 @@
 import * as BABYLON from "@babylonjs/core";
 import {
   Scene,
-  Vector2,
   Vector3,
   Mesh,
   LinesMesh,
-  Animation,
-  Curve3,
+  Color4,
+  GroundMesh,
 } from "@babylonjs/core";
 import "@babylonjs/inspector";
 import { GridMaterial } from "@babylonjs/materials";
 import emitter, { UiToSceneEvent } from "../uiToScene";
-import { instanceOf, match, __ } from "ts-pattern";
+import { match, __ } from "ts-pattern";
 import type { Spell } from "../types/spells";
 import {
   createMeshesFromEntities,
@@ -28,6 +27,40 @@ import {
   Player,
 } from "../data/entity";
 import { unproject, project } from "./utils/coordinates";
+import { RangeType, TargetType } from "../types/effects";
+import basicEffects from "../data/effects";
+import {
+  drawScope,
+  drawZone,
+  getPoints,
+  getScope,
+  getZone,
+  TARGETTABLE,
+} from "./utils/scope";
+
+const inside = (point: Vector3, vs: Vector3[]) => {
+  // ray-casting algorithm based on
+  // https://wrf.ecse.rpi.edu/Research/Short_Notes/pnpoly.html/pnpoly.html
+
+  const x = point.x;
+  const y = point.z;
+
+  let inside = false;
+  for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+    const xi = vs[i].x;
+    const yi = vs[i].z;
+    const xj = vs[j].x;
+    const yj = vs[j].z;
+
+    const intersect =
+      yi > y != yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+};
 
 export default async (canvas, entities: Entity[]) => {
   const engine = new BABYLON.Engine(canvas, true, {
@@ -67,7 +100,7 @@ export default async (canvas, entities: Entity[]) => {
   let currentlyPlayingMesh: Mesh;
 
   emitter.on(UiToSceneEvent.BattleStartTurn, (entity: Entity) => {
-    if (scope) {
+    if (currentSpell) {
       resetSelectedSpell();
     }
 
@@ -108,7 +141,6 @@ export default async (canvas, entities: Entity[]) => {
   };
 
   let activeMesh: Mesh;
-  let scope: LinesMesh;
 
   const onPointerMove = () => {
     const projected = getProjectedPosition();
@@ -136,6 +168,33 @@ export default async (canvas, entities: Entity[]) => {
       });
       setPositionToMesh(targetCell, position);
 
+      if (
+        currentSpell &&
+        position.x === currentlyPlayingMesh.position.x &&
+        position.z === currentlyPlayingMesh.position.z
+      ) {
+        match(basicEffects[currentSpell.effects[0]].potency[0].range.type)
+          .with(RangeType.SelfZone, () => {
+            drawScope(
+              RangeType.Single,
+              currentlyPlayingMesh.position,
+              basicEffects[currentSpell.effects[0]].potency[0].range.value,
+              new Color4(1, 0, 0, 1),
+              "innerScope",
+            );
+            const points = drawZone(
+              currentlyPlayingMesh.position,
+              basicEffects[currentSpell.effects[0]].potency[0].range.value,
+            );
+          })
+          .otherwise(() => {});
+      } else if (currentSpell) {
+        const mesh = scene.getMeshByName("innerScope");
+        if (mesh) {
+          mesh.dispose();
+        }
+      }
+
       if (activeMesh) {
         activeMesh.material.alpha = 0.5;
         emitter.emit(
@@ -149,7 +208,6 @@ export default async (canvas, entities: Entity[]) => {
   };
 
   const animateMeshToCell = (mesh: Mesh, destination: Vector3) => {
-
     const position = mesh.position;
     const path: Vector3[] = [];
     const targetX = Math.abs(position.x - destination.x);
@@ -164,10 +222,16 @@ export default async (canvas, entities: Entity[]) => {
     let differenceZ = 0;
     while (differenceZ < targetZ) {
       ++differenceZ;
-      path.push(new Vector3(position.x + differenceX * stepX, 0, position.z + differenceZ * stepZ));
+      path.push(
+        new Vector3(
+          position.x + differenceX * stepX,
+          0,
+          position.z + differenceZ * stepZ,
+        ),
+      );
     }
 
-    const speed = 10;
+    const speed = 5;
     const animationPosition = new BABYLON.Animation(
       "animPos",
       "position",
@@ -194,7 +258,7 @@ export default async (canvas, entities: Entity[]) => {
 
       const valueX = lastPosition.x - path[p].x;
       const valueZ = lastPosition.z - path[p].z;
-      
+
       let rotation = Math.PI;
       if (valueX > 0) {
         rotation = Math.PI / 2;
@@ -202,7 +266,7 @@ export default async (canvas, entities: Entity[]) => {
         rotation = -Math.PI / 2;
       } else if (valueZ > 0) {
         rotation = 0;
-      } 
+      }
       keysRotation.push({
         frame: p,
         value: new Vector3(0, rotation, 0),
@@ -256,13 +320,58 @@ export default async (canvas, entities: Entity[]) => {
 
   const prepareSpellCasting = (pointerInfo) => {
     scene.onPointerObservable.removeCallback(prepareEntityMovement);
+
     match(pointerInfo.type)
       .with(BABYLON.PointerEventTypes.POINTERMOVE, onPointerMove)
       .with(BABYLON.PointerEventTypes.POINTERUP, () => {
-        emitter.emit(
-          UiToSceneEvent.BattleEntityTarget,
-          activeMesh.metadata.entity,
+        const canClick = match(basicEffects[currentSpell.effects[0]].targetType)
+          .with(TargetType.Entity, () => !!activeMesh)
+          .otherwise(() => false);
+
+        const points = getPoints(
+          basicEffects[currentSpell.effects[0]].potency[0].range.type,
+          currentlyPlayingMesh.position,
+          basicEffects[currentSpell.effects[0]].potency[0].range.value,
         );
+
+        const projected = getProjectedPosition();
+        const position = unproject(projected);
+
+        if (
+          !canClick ||
+          !points.find(({ x, z }) => x === position.x && z === position.z)
+        ) {
+          return;
+        }
+        const effectsTargetEntities = currentSpell.effects.map((effect) => {
+          const basicEffect = basicEffects[effect];
+
+          return match(basicEffect.potency[0].range.type)
+            .with(RangeType.SelfZone, () => {
+              drawScope(
+                RangeType.Single,
+                currentlyPlayingMesh.position,
+                basicEffect.potency[0].range.value,
+                new Color4(1, 0, 0, 1),
+                "innerScope",
+              );
+              const points = drawZone(
+                currentlyPlayingMesh.position,
+                basicEffect.potency[0].range.value,
+              );
+
+              return interactiveMeshes.filter((interactiveMesh) => {
+                const position = interactiveMesh.position.clone();
+                position.x -= 0.5;
+                position.z -= 0.5;
+                return inside(position, points);
+              });
+            })
+            .otherwise(() => [activeMesh])
+            .map((interactiveMesh) => interactiveMesh.metadata.entity);
+        });
+
+        emitter.emit(UiToSceneEvent.BattleEntityTarget, effectsTargetEntities);
         activeMesh.material.alpha = 1;
         activeMesh = undefined;
         targetCell.visibility = 0;
@@ -270,87 +379,36 @@ export default async (canvas, entities: Entity[]) => {
       .otherwise(() => {});
   };
 
-  const getPointsToPoint = (start: Vector2, stop: Vector2, prop: "x" | "y") => {
-    const points: Vector3[] = [new Vector3(start.x, 0, start.y)];
-    const steps = {
-      x: start.x - stop.x > 0 ? -1 : 1,
-      y: start.y - stop.y > 0 ? -1 : 1,
-    };
-
-    const jointer = {
-      ...start,
-    };
-    while (jointer.x !== stop.x && jointer.y !== stop.y) {
-      jointer[prop] += steps[prop];
-      points.push(new Vector3(jointer.x, 0, jointer.y));
-      prop = prop === "x" ? "y" : "x";
-    }
-
-    return points;
-  };
-
-  const drawSquare = (position: Vector3, scope: number) => {
-    const myPoints = [
-      new Vector3(position.x + scope + 0.5, 0, position.z + scope + 0.5),
-      new Vector3(position.x + scope + 0.5, 0, position.z - scope - 0.5),
-      new Vector3(position.x - scope - 0.5, 0, position.z - scope - 0.5),
-      new Vector3(position.x - scope - 0.5, 0, position.z + scope + 0.5),
-    ];
-
-    myPoints.push(myPoints[0]);
-
-    const lines = Mesh.CreateLines("lines", myPoints);
-    lines.enableEdgesRendering();
-    lines.edgesWidth = 10;
-    lines.edgesColor = new BABYLON.Color4(1, 0, 0, 1);
-  };
-
-  const drawScope = (position: Vector3, scope: number) => {
-    const points1 = getPointsToPoint(
-      new Vector2(position.x + scope + 0.5, position.z - 0.5),
-      new Vector2(position.x + 0.5, position.z + scope + 0.5),
-      "y",
-    );
-    const points2 = getPointsToPoint(
-      new Vector2(position.x + 0.5, position.z + scope + 0.5),
-      new Vector2(position.x - scope - 0.5, position.z + 0.5),
-      "x",
-    );
-    const points3 = getPointsToPoint(
-      new Vector2(position.x - scope - 0.5, position.z + 0.5),
-      new Vector2(position.x - 0.5, position.z - scope - 0.5),
-      "y",
-    );
-    const points4 = getPointsToPoint(
-      new Vector2(position.x - 0.5, position.z - scope - 0.5),
-      new Vector2(position.x + scope + 0.5, position.z - 0.5),
-      "x",
-    );
-
-    const points = [...points1, ...points2, ...points3, ...points4];
-
-    const shape = Mesh.CreateLines("shape", points);
-    shape.enableEdgesRendering();
-    shape.edgesWidth = 10;
-    shape.edgesColor = new BABYLON.Color4(0, 0, 1, 1);
-    return shape;
-  };
-
   const resetSelectedSpell = () => {
+    targetCell.visibility = 0;
     scope.dispose();
+    const mesh = scene.getMeshByName("innerScope");
+    if (mesh) {
+      mesh.dispose();
+    }
     scene.onPointerObservable.removeCallback(prepareSpellCasting);
     setTimeout(() => {
       scene.onPointerObservable.add(prepareEntityMovement);
     }, 100);
   };
 
+  let currentSpell = undefined;
+  let scope: Mesh = undefined;
+
   const handleClickSpell = (spell?: Spell) => {
     if (spell) {
-      scope = drawScope(currentlyPlayingMesh.position, spell.scope);
+      scope = getScope(
+        basicEffects[spell.effects[0]].potency[0].range.type,
+        currentlyPlayingMesh.position,
+        basicEffects[spell.effects[0]].potency[0].range.value,
+        scene,
+      );
+
       scene.onPointerObservable.add(prepareSpellCasting);
-    } else if (scope) {
+    } else if (currentSpell) {
       resetSelectedSpell();
     }
+    currentSpell = spell;
   };
 
   emitter.on(UiToSceneEvent.BattleSpellClick, handleClickSpell);
@@ -393,9 +451,21 @@ export default async (canvas, entities: Entity[]) => {
         const targetMesh = getByEntity(interactiveMeshes, target);
 
         if (casterMesh.position.x === targetMesh.position.x) {
-          targetMesh.position.z += cells * (casterMesh.position.z > targetMesh.position.z ? 1 : -1);
+          const step = casterMesh.position.z > targetMesh.position.z ? 1 : -1;
+          const additionalZ = cells * step;
+          targetMesh.position.z +=
+            additionalZ +
+            (targetMesh.position.z + additionalZ === casterMesh.position.z
+              ? -step
+              : 0);
         } else if (casterMesh.position.z === targetMesh.position.z) {
-          targetMesh.position.x += cells * (casterMesh.position.x > targetMesh.position.x ? 1 : -1);
+          const step = casterMesh.position.x > targetMesh.position.x ? 1 : -1;
+          const additionalX = cells * step;
+          targetMesh.position.x +=
+            additionalX +
+            (targetMesh.position.x + additionalX === casterMesh.position.x
+              ? -step
+              : 0);
         }
       },
     );

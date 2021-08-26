@@ -40,7 +40,11 @@ import Operator, { Kind } from "../components/Operator.svelte";
   };
 
   const handleClickItem = () => {
-    effects.add({ name: effectName, effects: [effectSlots[0].name, effectSlots[1].name], icon: effectSlots[0].icon });
+    effects.add({ 
+      name: effectName, 
+      effects: [effectSlots[0].name, effectSlots[1].name], 
+      // icon: effectSlots[0].icon,
+    });
   };
 </script>
 

@@ -83,17 +83,19 @@ export const patterns: SpellPattern[] = [
   patternFive,
 ];
 
-export const cast = (spell: Spell, caster, targets) => {
-  const details = spell.effects.map((effect) => {
+export const cast = (spell: Spell, caster, targetsByEffects: Entity[][]) => {
+  const details = spell.effects.map((effect, index) => {
     const consumableEffect = {
       type: effect,
       level: 0,
       element: Element.Fire,
     };
-    return applyEffect(consumableEffect)(caster, targets);
+    console.log(consumableEffect);
+    
+    return applyEffect(consumableEffect)(caster, targetsByEffects[index]);
   });
 
-  targets.forEach((target) => triggerSideEffects(spell.effects[0], target));
+  // targets.forEach((target) => triggerSideEffects(spell.effects[0], target));
   return details;
 };
 

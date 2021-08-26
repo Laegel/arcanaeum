@@ -36,6 +36,12 @@
     currentSpell = spell;
     emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
     emitter.emit(UiToSceneEvent.BattleSpellClick, spell);
+
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "Escape") {
+        emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
+      }
+    });
   };
 
   const handleTurns = () => {
@@ -79,8 +85,10 @@
   });
 
   let logs = [];
-  emitter.on(UiToSceneEvent.BattleEntityTarget, (entity: Entity) => {
-    const details = cast(currentSpell, turns[0], [entity]);
+  emitter.on(UiToSceneEvent.BattleEntityTarget, (entities: Entity[][]) => {
+    console.log(entities);
+    
+    const details = cast(currentSpell, turns[0], entities);
     details.forEach(line => line.forEach(({caster, target, value}) => logs = [...logs, `${caster.getName()} cast ${currentSpell.name} on ${target.getName()} for ${value} points.`]));
     emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
     handleTurns();
