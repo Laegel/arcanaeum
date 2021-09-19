@@ -1,20 +1,30 @@
 <script lang="ts">
+  export let location;
+
   import { onMount, onDestroy } from "svelte";
 
-  import { spells } from "../../storage";
+  import { spells, effects, battles } from "../../storage";
   import { basicSpellsList } from "../../types/spells";
-  import { effects } from "../../storage";
   import basicEffects from "../../data/effects";
   import Slot from "../components/Slot.svelte";
   import launch from "../../scenes/babylon";
   import emitter, { UiToSceneEvent } from "../../uiToScene";
-  import { Ally, Entity, Enemy, Player, Event as EntityEvent } from "../../data/entity";
+  import {
+    Ally,
+    Entity,
+    Enemy,
+    Player,
+    Event as EntityEvent,
+  } from "../../data/entity";
   import EntityDetails from "./components/EntityDetails.svelte";
   import Turns from "./components/Turns.svelte";
-  import { applyEffect, cast, Element, elementalDividers, elementalMultipliers } from "../../data/spells";
-  import type entity from "../../types/entity";
+  import { cast } from "../../data/spells";
   import Results from "./components/Results.svelte";
   import Logs from "./components/Logs.svelte";
+  import { execute } from "../Modes/Deeplink";
+  import battlesData from "../../data/battle.json";
+  import { getData } from "../../data/player";
+  import { Mode } from "../../types/battle";
 
   const getAllSpells = async () => {
     const createdSpells = await spells.toArray();
@@ -23,7 +33,12 @@
 
   const getAllEffects = async () => {
     const createdEffects = await effects.toArray();
-    return {...basicEffects, ...Object.fromEntries(createdEffects.map(effect => [effect.name, effect]))};
+    return {
+      ...basicEffects,
+      ...Object.fromEntries(
+        createdEffects.map((effect) => [effect.name, effect, effect.icon]),
+      ),
+    };
   };
 
   const spellsPromise = getAllSpells();
@@ -34,6 +49,8 @@
   let currentSpell;
   const handleClickSpell = (spell) => {
     currentSpell = spell;
+    console.log(currentSpell);
+
     emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
     emitter.emit(UiToSceneEvent.BattleSpellClick, spell);
 
@@ -46,24 +63,36 @@
 
   const handleTurns = () => {
     const virtualTurns = [...turns];
-    const entityRemoved = virtualTurns.shift();
-    virtualTurns.push(entityRemoved);
-    turns = [...virtualTurns];
+    const entityRemoved = turns.shift();
+    entityRemoved.addAP(4);
+    if (entityRemoved instanceof Player) {
+      player.actionPoints = entityRemoved.actionPoints;
+    }
+    turns.push(entityRemoved);
+    turns = turns;
+    console.log(turns, entityRemoved);
+    turn = turns[0];
+    
     emitter.emit(UiToSceneEvent.BattleStartTurn, turns[0]);
   };
 
-  const player = new Player("Player", 100, 100, { x: 0, y: 0 }, 10, 5, 3, elementalMultipliers, {...elementalDividers, [Element[Element.Fire]]: -2});
-  const ally = new Ally("Ally", 100, 100, { x: 2, y: 2 }, 10, 5, 3, elementalMultipliers, elementalDividers);
-  const enemy = new Enemy("Enemy", 100, 100, { x: -4, y: -1 }, 1, 1, 1, elementalMultipliers, elementalDividers);
+  if (!location.state.deeplink) {
+    location.state.deeplink = "Modes.Campaign.0";
+  }
+  const [_, mode, index] = location.state.deeplink.split(".");
 
-  const entities = [
-    player, ally, enemy
-  ];
+  const enemies = battlesData[mode][index].enemies.map((enemy, index) =>
+    Enemy.from({ ...enemy, name: `Enemy ${index}` }),
+  );
 
-  let turns = [player, enemy, ally];
+  let player = Player.from(getData());
+  const entities = [player, ...enemies];
+
+  let turns = [player, ...enemies];
+  $: turn = turns[0];
 
   onMount(async () => {
-    await launch(canvasTarget, entities);
+    await launch(canvasTarget, entities, battlesData[mode][index].map);
     emitter.emit(UiToSceneEvent.BattleStartTurn, turns[0]);
   });
 
@@ -85,50 +114,73 @@
   });
 
   let logs = [];
-  emitter.on(UiToSceneEvent.BattleEntityTarget, (entities: Entity[][]) => {
+  emitter.on(UiToSceneEvent.BattleEntityTarget, async (entities: Entity[][]) => {
     console.log(entities);
-    
+
     const details = cast(currentSpell, turns[0], entities);
-    details.forEach(line => line.forEach(({caster, target, value}) => logs = [...logs, `${caster.getName()} cast ${currentSpell.name} on ${target.getName()} for ${value} points.`]));
+    details.forEach((line) =>
+      line.forEach(
+        ({ caster, target, value }) =>
+          (logs = [
+            ...logs,
+            `${caster.getName()} cast ${
+              currentSpell.name
+            } on ${target.getName()} for ${value} points.`,
+          ]),
+      ),
+    );
+
+    const effects = await effectsPromise
     emitter.emit(UiToSceneEvent.BattleSpellClick, undefined);
-    handleTurns();
+    
+    turns[0].substractAP(effects[currentSpell.effects[0]].potency[0].cost);
+    if (turns[0] instanceof Player) {
+      player.actionPoints = turns[0].actionPoints;
+    }
+    turns[0].cooldowns[currentSpell.effects[0]] += effects[currentSpell.effects[0]].potency[0].cooldown;
   });
 
   entities.forEach((entity) => {
-    entity.on(
-      EntityEvent.Death,
-      () => {
-        const enemiesRemain = !!entities.find(
-          (entity) => entity instanceof Enemy && entity.getCurrentHealth() !== 0,
-        );
-        const alliesRemain = !!entities.find(
-          (entity) =>  
-            (entity instanceof Player && entity.getCurrentHealth() !== 0) ||
-            (entity instanceof Ally && entity.getCurrentHealth() !== 0),
-        );
+    entity.on(EntityEvent.Death, () => {
+      const enemiesRemain = !!entities.find(
+        (entity) => entity instanceof Enemy && entity.getCurrentHealth() !== 0,
+      );
+      const alliesRemain = !!entities.find(
+        (entity) =>
+          (entity instanceof Player && entity.getCurrentHealth() !== 0) ||
+          (entity instanceof Ally && entity.getCurrentHealth() !== 0),
+      );
 
-        if (!enemiesRemain) {
-          console.log("enemies defeated");
-          showResults = true;
-          entities.forEach((entity) => {
-            entity.clear();
-          });
-        } else if (!alliesRemain) {
-          console.log("allies defeated");
-          showResults = true;
-          entities.forEach((entity) => {
-            entity.clear();
-          });
-        }
-      },
-    );
-
-    entity.on(EntityEvent.RequestMovementPermission, (movementPoints) => {
-      
+      if (!enemiesRemain) {
+        console.log("enemies defeated");
+        battles.add({ mode: Mode[mode as string], index: parseFloat(index) });
+        showResults = true;
+        entities.forEach((entity) => {
+          entity.clear();
+        });
+      } else if (!alliesRemain) {
+        console.log("allies defeated");
+        showResults = true;
+        entities.forEach((entity) => {
+          entity.clear();
+        });
+      }
     });
 
-    entity.on(EntityEvent.Move, () => {
+    entity.on(EntityEvent.RequestMovementPermission, ([entity, cellsAmount]: [Entity, number]) => {
+      const costAP = Math.ceil(cellsAmount / 2);
+      entity.emit(EntityEvent.ReplyMovementPermission, entity.hasEnoughAP(costAP));
+    });
 
+    entity.on(EntityEvent.Move, ([entity, cellsAmount]: [Entity, number]) => {
+      const costAP = Math.ceil(cellsAmount / 2);
+      if (entity.hasEnoughAP(costAP)) {
+        entity.substractAP(costAP);
+        turns[0] = entity;
+        if (entity instanceof Player) {
+          player.actionPoints = entity.actionPoints;
+        }
+      }
     });
   });
 </script>
@@ -137,29 +189,37 @@
   <div class="relative">
     {#if showResults}
       <Results />
+      <button
+        on:click={() => {
+          const parts = location.state.deeplink.split(".");
+          parts.pop();
+          execute(parts.join("."));
+        }}>Continue</button
+      >
     {:else}
       <canvas bind:this={canvasTarget} />
 
-      <Turns turns={turns}/>
+      <div class="absolute right-0 top-0">
+        <Turns {turns} />
 
-      {#if hoveredEntity}
-        <EntityDetails entity={hoveredEntity}/>
-      {/if}
-
-      <div class="">
+        <EntityDetails entity={turn} />
         <!-- fixed bottom-0 z-10 -->
         {#await Promise.all([spellsPromise, effectsPromise])}
           ...
         {:then [spells, effects]}
           {#each spells as spell}
-            <Slot item={{...spell, icon: effects[spell.effects[0]].icon}} on:click={() => handleClickSpell(spell)} />
+            <Slot
+              item={{ ...spell, icon: effects[spell.effects[0]].icon }}
+              on:click={() => handleClickSpell(spell)}
+              disabled={player.hasNotEnoughAP(effects[spell.effects[0]].potency[0].cost) || player.hasCooldown(spell.effects[0])}
+            />
           {/each}
         {/await}
+        <button on:click={handleTurns}>End turn</button>
       </div>
-      <Logs logs={logs}/>
+      <Logs {logs} />
     {/if}
   </div>
-
 </div>
 
 <style>

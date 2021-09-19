@@ -6,6 +6,7 @@ export enum Event {
   Move,
   RequestMovementPermission,
   AttractionMovement,
+  ReplyMovementPermission,
 }
 
 interface Coordinates {
@@ -17,14 +18,13 @@ export abstract class Entity extends EventEmitter<Event> {
   private name: string;
   private maxHealth: number;
   private currentHealth: number;
-  private maxMagicka: number;
-  private currentMagicka: number;
   private position: Coordinates;
   private power: number;
   private defense: number;
-  private movementPoints: number;
+  public actionPoints: number;
   private elementalMultipliers: { [key in Element]: number };
   private elementalDividers: { [key in Element]: number };
+  public cooldowns: { [key: string]: number } = {};
 
   public static from(args: { [key: string]: any }) {
     const entity = new (this as any)();
@@ -32,7 +32,6 @@ export abstract class Entity extends EventEmitter<Event> {
       entity[prop] = args[prop];
     }
     entity.currentHealth = entity.maxHealth;
-    entity.currentMagicka = entity.maxMagicka;
 
     return entity;
   }
@@ -40,11 +39,10 @@ export abstract class Entity extends EventEmitter<Event> {
   public constructor(
     name: string,
     health: number,
-    magicka: number,
     position: Coordinates,
     power: number,
     defense: number,
-    movementPoints: number,
+    actionPoints: number,
     elementalMultipliers,
     elementalDividers,
   ) {
@@ -52,18 +50,24 @@ export abstract class Entity extends EventEmitter<Event> {
     this.name = name;
     this.maxHealth = health;
     this.currentHealth = health;
-    this.maxMagicka = magicka;
-    this.currentMagicka = magicka;
     this.position = position;
     this.power = power;
     this.defense = defense;
-    this.movementPoints = movementPoints;
+    this.actionPoints = actionPoints;
     this.elementalMultipliers = elementalMultipliers;
     this.elementalDividers = elementalDividers;
   }
 
   public castOn(action, target: Entity) {
     target.decreaseHealth(action);
+  }
+
+  public hasEnoughAP(cost) {
+    return this.actionPoints >= cost;
+  }
+
+  public hasNotEnoughAP(cost) {
+    return !this.hasEnoughAP(cost);
   }
 
   public getName() {
@@ -78,16 +82,20 @@ export abstract class Entity extends EventEmitter<Event> {
     return this.currentHealth;
   }
 
-  public getMaxMagicka() {
-    return this.maxMagicka;
+  public getAP() {
+    return this.actionPoints;
   }
 
-  public getCurrentMagicka() {
-    return this.currentMagicka;
+  public addAP(value: number) {
+    this.actionPoints += value;
   }
 
   public getPosition() {
     return this.position;
+  }
+
+  public substractAP(value: number) {
+    this.actionPoints -= value;
   }
 
   public decreaseHealth(incomingDamages: number) {
@@ -129,6 +137,14 @@ export abstract class Entity extends EventEmitter<Event> {
 
   public castSpell(value: number, element: Element) {
     return value * this.power * this.elementalMultipliers[Element[element]];
+  }
+
+  public hasCooldown(spell: string) {
+    return this.cooldowns[spell] > 0;
+  }
+
+  public hasNoCooldown(spell: string) {
+    return !this.hasCooldown(spell);
   }
 
   public hasSideEffects() {}

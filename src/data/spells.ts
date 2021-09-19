@@ -84,6 +84,8 @@ export const patterns: SpellPattern[] = [
 ];
 
 export const cast = (spell: Spell, caster, targetsByEffects: Entity[][]) => {
+  console.log(spell);
+  
   const details = spell.effects.map((effect, index) => {
     const consumableEffect = {
       type: effect,

@@ -43,7 +43,7 @@ import Operator, { Kind } from "../components/Operator.svelte";
     effects.add({ 
       name: effectName, 
       effects: [effectSlots[0].name, effectSlots[1].name], 
-      // icon: effectSlots[0].icon,
+      icon: effectSlots[0].icon,
     });
   };
 </script>

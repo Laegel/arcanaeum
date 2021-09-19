@@ -1,0 +1,118 @@
+{
+  "Campaign": [
+    {
+      "map": "map",
+      "enemies": [
+        {
+          "maxHealth": 100,
+          "position": {
+            "x": -4,
+            "y": -1
+          },
+          "power": 1,
+          "defense": 1,
+          "actionPoints": 4,
+          "elementalMultipliers": {
+            "Fire": 1,
+            "Water": 1,
+            "Earth": 1,
+            "Wind": 1,
+            "Sandstorm": 1,
+            "Metal": 1,
+            "Blizzard": 1,
+            "Lightning": 1,
+            "Wood": 1,
+            "Steam": 1
+          },
+          "elementalDividers": {
+            "Fire": 1,
+            "Water": 1,
+            "Earth": 1,
+            "Wind": 1,
+            "Sandstorm": 1,
+            "Metal": 1,
+            "Blizzard": 1,
+            "Lightning": 1,
+            "Wood": 1,
+            "Steam": 1
+          }
+        }
+      ],
+      "rewards": []
+    },
+    {
+      "map": "",
+      "enemies": [
+        {
+          "maxHealth": 100,
+          "position": {
+            "x": -4,
+            "y": -1
+          },
+          "power": 1,
+          "defense": 1,
+          "actionPoints": 4,
+          "elementalMultipliers": {
+            "Fire": 1,
+            "Water": 1,
+            "Earth": 1,
+            "Wind": 1,
+            "Sandstorm": 1,
+            "Metal": 1,
+            "Blizzard": 1,
+            "Lightning": 1,
+            "Wood": 1,
+            "Steam": 1
+          },
+          "elementalDividers": {
+            "Fire": 1,
+            "Water": 1,
+            "Earth": 1,
+            "Wind": 1,
+            "Sandstorm": 1,
+            "Metal": 1,
+            "Blizzard": 1,
+            "Lightning": 1,
+            "Wood": 1,
+            "Steam": 1
+          }
+        },
+        {
+          "maxHealth": 100,
+          "position": {
+            "x": -3,
+            "y": -4
+          },
+          "power": 1,
+          "defense": 1,
+          "actionPoints": 4,
+          "elementalMultipliers": {
+            "Fire": 1,
+            "Water": 1,
+            "Earth": 1,
+            "Wind": 1,
+            "Sandstorm": 1,
+            "Metal": 1,
+            "Blizzard": 1,
+            "Lightning": 1,
+            "Wood": 1,
+            "Steam": 1
+          },
+          "elementalDividers": {
+            "Fire": 1,
+            "Water": 1,
+            "Earth": 1,
+            "Wind": 1,
+            "Sandstorm": 1,
+            "Metal": 1,
+            "Blizzard": 1,
+            "Lightning": 1,
+            "Wood": 1,
+            "Steam": 1
+          }
+        }
+      ],
+      "rewards": []
+    }
+  ]
+}

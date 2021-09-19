@@ -19,6 +19,8 @@ export interface Range {
 export interface Potency {
   value: number;
   range: Range;
+  cost: number;
+  cooldown: number;
 }
 
 export interface EffectApplicationDetails {
@@ -28,6 +30,7 @@ export interface EffectApplicationDetails {
 }
 
 export enum TargetType {
+  Self,
   Entity,
   Ally,
   Enemy,

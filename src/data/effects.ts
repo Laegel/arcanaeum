@@ -15,10 +15,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        cost: 1,
         range: {
           type: RangeType.Single,
           value: 5,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Entity,
@@ -49,10 +51,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 0,
+        cost: 1,
         range: {
           type: RangeType.Single,
           value: 5,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Entity,
@@ -83,10 +87,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 1,
+        cost: 1,
         range: {
           type: RangeType.Single,
           value: 5,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Cell,
@@ -117,10 +123,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 0,
+        cost: 1,
         range: {
           type: RangeType.Single,
           value: 5,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Entity,
@@ -151,10 +159,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 0,
+        cost: 1,
         range: {
           type: RangeType.Single,
           value: 5,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Entity,
@@ -185,10 +195,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        cost: 1,
         range: {
           type: RangeType.Cross,
           value: 2,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Entity,
@@ -219,10 +231,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        cost: 1,
         range: {
           type: RangeType.Cross,
           value: 7,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Entity,
@@ -248,10 +262,12 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 2,
+        cost: 1,
         range: {
           type: RangeType.Single,
           value: 5,
         },
+        cooldown: 1,
       },
     },
     targetType: TargetType.Any,
@@ -282,13 +298,15 @@ const basicEffects: { [key: string]: EffectDefinition } = {
     potency: {
       0: {
         value: 5,
+        cost: 1,
         range: {
           type: RangeType.AroundSelfZone,
           value: 2,
         },
+        cooldown: 1,
       },
     },
-    targetType: TargetType.Ally,
+    targetType: TargetType.Self,
     apply:
       (effect: ConsumableEffect) => (caster: Entity, targets: Entity[]) => {
         const currentEffect = basicEffects[effect.type];

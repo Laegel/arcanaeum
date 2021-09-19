@@ -15,6 +15,7 @@
     "@babylonjs/materials": "^4.2.0",
     "babylonjs": "^4.2.0",
     "dexie": "^3.0.3",
+    "object-path": "^0.11.7",
     "sirv-cli": "^1.0.0",
     "svelte-routing": "^1.6.0",
     "ts-pattern": "^3.2.4"
@@ -23,6 +24,7 @@
     "@babylonjs/gui": "^4.2.0",
     "@babylonjs/inspector": "^4.2.0",
     "@rollup/plugin-commonjs": "^17.0.0",
+    "@rollup/plugin-json": "^4.1.0",
     "@rollup/plugin-node-resolve": "^11.0.0",
     "@rollup/plugin-typescript": "^8.0.0",
     "@tsconfig/svelte": "^2.0.0",

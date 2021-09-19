@@ -6,6 +6,12 @@ import {
   LinesMesh,
   Color4,
   GroundMesh,
+  Color3,
+  AssetsManager,
+  BackgroundMaterial,
+  SceneLoader,
+  StandardMaterial,
+  MeshBuilder,
 } from "@babylonjs/core";
 import "@babylonjs/inspector";
 import { GridMaterial } from "@babylonjs/materials";
@@ -37,6 +43,7 @@ import {
   getZone,
   TARGETTABLE,
 } from "./utils/scope";
+import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 
 const inside = (point: Vector3, vs: Vector3[]) => {
   // ray-casting algorithm based on
@@ -62,7 +69,7 @@ const inside = (point: Vector3, vs: Vector3[]) => {
   return inside;
 };
 
-export default async (canvas, entities: Entity[]) => {
+export default async (canvas, entities: Entity[], mapLink: string) => {
   const engine = new BABYLON.Engine(canvas, true, {
     preserveDrawingBuffer: true,
     stencil: true,
@@ -82,6 +89,8 @@ export default async (canvas, entities: Entity[]) => {
   const log = debounce((...args) => console.log(...args));
 
   const scene = new Scene(engine);
+  window["scene"] = scene;
+
   // scene.debugLayer.show({
   //   embedMode: true,
   // });
@@ -89,8 +98,127 @@ export default async (canvas, entities: Entity[]) => {
   const grid = new GridMaterial("grid", scene);
   grid.gridOffset = new Vector3(0.5, 0, 0.5);
 
-  const ground = Mesh.CreateGround("ground1", 20, 20, 1, scene);
-  ground.material = grid;
+  const assetsManager = new AssetsManager(scene);
+
+  // const ground = Mesh.CreateGround("ground1", 20, 20, 1, scene);
+  // ground.material = grid;
+
+  assetsManager.onTaskErrorObservable.add((task) => {
+    console.log(
+      "task failed",
+      task.errorObject.message,
+      task.errorObject.exception,
+    );
+  });
+
+  SceneLoader.ImportMesh(
+    "",
+    "/meshes/",
+    "tree-open.obj",
+    scene,
+    (treeMeshes) => {
+      treeMeshes.forEach((mesh) => {
+        mesh.scaling.scaleInPlace(0.3);
+        mesh.position = new Vector3(-4, 0.5, 3);
+      });
+      const matSpines = new StandardMaterial("leaves", scene);
+      matSpines.diffuseColor = new Color3(0.7, 0.7, 0.2);
+      const matTrunk = new StandardMaterial("trunk", scene);
+      matTrunk.diffuseColor = new Color3(0.4, 0.2, 0.2);
+      treeMeshes[0].material = matSpines;
+      treeMeshes[1].material = matTrunk;
+    },
+  );
+
+  SceneLoader.ImportMesh(
+    "",
+    "/meshes/",
+    "tree-pyramidal.obj",
+    scene,
+    (treeMeshes) => {
+      treeMeshes.forEach((mesh) => {
+        mesh.scaling.scaleInPlace(0.5);
+        mesh.position = new Vector3(4, 0, -2);
+      });
+      const matSpines = new StandardMaterial("leaves", scene);
+      matSpines.diffuseColor = new Color3(0.7, 0.7, 0.2);
+      const matTrunk = new StandardMaterial("trunk", scene);
+      matTrunk.diffuseColor = new Color3(0.4, 0.2, 0.2);
+      treeMeshes[0].material = matSpines;
+      treeMeshes[1].material = matTrunk;
+    },
+  );
+
+  const textureTask = assetsManager.addTextureTask(
+    "texture",
+    `/textures/ground.png`,
+  );
+
+  textureTask.onSuccess = async (task) => {
+    const backgroundMaterial = new BackgroundMaterial(
+      "backgroundMaterial",
+      scene,
+    );
+    backgroundMaterial.diffuseTexture = task.texture;
+    // backgroundMaterial.diffuseTexture.uScale = 5.0; //Repeat 5 times on the Vertical Axes
+    // backgroundMaterial.diffuseTexture.vScale = 5.0; //Repeat 5 times on the Horizontal Axes
+    backgroundMaterial.shadowLevel = 0.4;
+
+    const faceUV = new Array(6);
+
+    // side 0 faces the positive z direction
+    // side 1 faces the negative z direction
+    // side 2 faces the positive x direction
+    // side 3 faces the negative x direction
+    // side 4 faces the positive y direction
+    // side 5 faces the negative y direction
+
+    faceUV[0] = new BABYLON.Vector4(0, 0.5, 1 / 3, 1);
+    faceUV[1] = new BABYLON.Vector4(1 / 3, 0, 2 / 3, 0.5);
+    faceUV[2] = new BABYLON.Vector4(2 / 3, 0, 1, 0.5);
+    faceUV[3] = new BABYLON.Vector4(0, 0, 1 / 3, 0.5);
+    faceUV[4] = new BABYLON.Vector4(1 / 3, 0.5, 2 / 3, 1);
+    faceUV[5] = new BABYLON.Vector4(2 / 3, 0.5, 1, 1);
+
+    const options = {
+      faceUV,
+      width: 1,
+      height: 0.5,
+      depth: 1,
+    };
+
+    const box = MeshBuilder.CreateBox("ground", options, scene);
+    box.position = new Vector3(-4, 0.25, 4);
+    // box.isVisible = false;
+    const mat = new BABYLON.StandardMaterial("mat", scene);
+    mat.diffuseTexture = task.texture;
+    box.material = mat;
+
+    const data = await fetch(`/maps/${mapLink}.json`);
+    (await data.json()).forEach(
+      (position) =>
+        (box.clone("ground").position = new Vector3(
+          position.x,
+          position.y,
+          position.z,
+        )),
+    );
+
+    // for (let i = -5; i < 5; ++i) {
+    //   for (let j = -5; j < 5; ++j) {
+    //     box.clone("ground").position = new Vector3(i, -0.25, j);
+    //   }
+    // }
+    // box.clone("ground").position = new Vector3(-5, 0.25, 2);
+    // box.clone("ground").position = new Vector3(-4, 0.25, 3);
+    // box.clone("ground").position = new Vector3(-3, 0.25, 4);
+    // box.clone("ground").position = new Vector3(-5, 0.75, 3);
+    // box.clone("ground").position = new Vector3(-4, 0.75, 4);
+    // box.clone("ground").position = new Vector3(-5, 0.75, 4);
+    box.isVisible = false;
+  };
+
+  assetsManager.load();
 
   const targetCell = Mesh.CreateGround("hover", 1, 1, 3, scene);
   targetCell.visibility = 0;
@@ -118,13 +246,13 @@ export default async (canvas, entities: Entity[]) => {
 
   applyZoom(camera, 5);
 
-  camera.setTarget(ground.position);
+  camera.setTarget(new Vector3(0, 0, 0));
 
   camera.attachControl(canvas, false);
 
   const light = new BABYLON.HemisphericLight(
     "light1",
-    new Vector3(0, 1, 0),
+    new Vector3(1, 1, 1),
     scene,
   );
 
@@ -143,6 +271,10 @@ export default async (canvas, entities: Entity[]) => {
   let activeMesh: Mesh;
 
   const onPointerMove = () => {
+    if (!getUnprojectedPosition()) {
+      console.log("void");
+      return;
+    }
     const projected = getProjectedPosition();
 
     const { pickedMesh } = scene.pick(scene.pointerX, scene.pointerY);
@@ -166,7 +298,19 @@ export default async (canvas, entities: Entity[]) => {
           interactiveMesh.position.z === projected.y
         );
       });
-      setPositionToMesh(targetCell, position);
+
+      const points = getPoints(
+        basicEffects[currentSpell.effects[0]].potency[0].range.type,
+        currentlyPlayingMesh.position,
+        basicEffects[currentSpell.effects[0]].potency[0].range.value,
+      );
+
+      if (points.find(({ x, z }) => x === position.x && z === position.z)) {
+        setPositionToMesh(
+          targetCell,
+          new Vector3(position.x, 0.01, position.z),
+        );
+      }
 
       if (
         currentSpell &&
@@ -174,17 +318,14 @@ export default async (canvas, entities: Entity[]) => {
         position.z === currentlyPlayingMesh.position.z
       ) {
         match(basicEffects[currentSpell.effects[0]].potency[0].range.type)
-          .with(RangeType.SelfZone, () => {
-            drawScope(
+          .with(RangeType.AroundSelfZone, () => {
+            getScope(
               RangeType.Single,
               currentlyPlayingMesh.position,
               basicEffects[currentSpell.effects[0]].potency[0].range.value,
-              new Color4(1, 0, 0, 1),
+              scene,
+              new Color3(1, 0, 0),
               "innerScope",
-            );
-            const points = drawZone(
-              currentlyPlayingMesh.position,
-              basicEffects[currentSpell.effects[0]].potency[0].range.value,
             );
           })
           .otherwise(() => {});
@@ -289,30 +430,80 @@ export default async (canvas, entities: Entity[]) => {
         interactiveMesh.position.z === position.z,
     );
 
+  let lastPosition = { x: -1, z: -1 };
   const prepareEntityMovement = (pointerInfo) => {
     match(pointerInfo.type)
-      .with(BABYLON.PointerEventTypes.POINTERMOVE, () => {})
-      .with(BABYLON.PointerEventTypes.POINTERUP, () => {
+      .with(BABYLON.PointerEventTypes.POINTERMOVE, () => {
+        if (!getUnprojectedPosition()) {
+          console.log("void");
+          return;
+        }
         const projected = getProjectedPosition();
         const position = unproject(projected);
-        currentlyPlayingMesh.metadata.entity.emit(
-          EntityEvent.Move,
-          currentlyPlayingMesh.metadata.entity,
+
+        if (lastPosition.x === position.x && lastPosition.z === position.z) {
+          return;
+        }
+        lastPosition = position;
+        const currentPosition = currentlyPlayingMesh.position;
+        const cellsAmount =
+          Math.abs(currentPosition.x - position.x) +
+          Math.abs(currentPosition.z - position.z);
+
+        console.log("move");
+
+        const onReply = (result) => {
+          console.log("fired", result);
+          // currentlyPlayingMesh.metadata.entity.off(
+          //   EntityEvent.ReplyMovementPermission,
+          //   onReply,
+          // );
+        };
+        currentlyPlayingMesh.metadata.entity.once(
+          EntityEvent.ReplyMovementPermission,
+          onReply,
         );
+        currentlyPlayingMesh.metadata.entity.emit(
+          EntityEvent.RequestMovementPermission,
+          [currentlyPlayingMesh.metadata.entity, cellsAmount],
+        );
+      })
+      .with(BABYLON.PointerEventTypes.POINTERUP, () => {
+        if (!getUnprojectedPosition()) {
+          console.log("void");
+          return;
+        }
+        const projected = getProjectedPosition();
+        const position = unproject(projected);
+
         const currentPosition = currentlyPlayingMesh.position;
         const currentProjectedPosition = project(currentPosition);
         const cellsAmount =
           Math.abs(currentPosition.x - position.x) +
           Math.abs(currentPosition.z - position.z);
 
-        if (isPositionFree(position)) {
-          animateMeshToCell(currentlyPlayingMesh, position);
+        const handleReplyMovementPermission = (canMove: boolean) => {
+          if (canMove && isPositionFree(position)) {
+            animateMeshToCell(currentlyPlayingMesh, position);
 
-          currentlyPlayingMesh.metadata.entity.emit(
-            EntityEvent.Move,
-            currentlyPlayingMesh.metadata.entity,
+            currentlyPlayingMesh.metadata.entity.emit(EntityEvent.Move, [
+              currentlyPlayingMesh.metadata.entity,
+              cellsAmount,
+            ]);
+          }
+          currentlyPlayingMesh.metadata.entity.off(
+            EntityEvent.ReplyMovementPermission,
+            handleReplyMovementPermission,
           );
-        }
+        };
+        currentlyPlayingMesh.metadata.entity.on(
+          EntityEvent.ReplyMovementPermission,
+          handleReplyMovementPermission,
+        );
+        currentlyPlayingMesh.metadata.entity.emit(
+          EntityEvent.RequestMovementPermission,
+          [currentlyPlayingMesh.metadata.entity, cellsAmount],
+        );
       })
       .otherwise(() => {});
   };
@@ -326,6 +517,7 @@ export default async (canvas, entities: Entity[]) => {
       .with(BABYLON.PointerEventTypes.POINTERUP, () => {
         const canClick = match(basicEffects[currentSpell.effects[0]].targetType)
           .with(TargetType.Entity, () => !!activeMesh)
+          .with(TargetType.Self, () => activeMesh === currentlyPlayingMesh)
           .otherwise(() => false);
 
         const points = getPoints(

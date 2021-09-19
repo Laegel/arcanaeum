@@ -11,7 +11,6 @@
     <div class="inline-block w-28">
       {entity.getName()}
       <Bar effective={entity.getCurrentHealth()} total={entity.getMaxHealth()} color='red'/>
-      <Bar effective={entity.getCurrentMagicka()} total={entity.getMaxMagicka()} color='blue'/>
     </div>
   {/each}
 </div>

@@ -110,14 +110,14 @@ export const getScope = (
   position: Vector3,
   scope: number,
   scene: Scene,
-  color = new Color4(0, 0, 1, 1),
-  name = "scope",
+  color = new Color3(0, 0, 1),
+  name = TARGETTABLE,
 ) => {
   const points = getPoints(type, position, scope);
 
   const ground = Mesh.CreateGround(TARGETTABLE, 1, 1, 1);
   const material = new StandardMaterial("", scene);
-  material.diffuseColor = new Color3(0, 0, 1);
+  material.diffuseColor = color;
   material.alpha = 0.3;
   ground.visibility = 0;
 
@@ -126,7 +126,7 @@ export const getScope = (
 
   mesh.material = material;
   mesh.visibility = 1;
-  mesh.name = TARGETTABLE;
+  mesh.name = name;
 
   return mesh;
 };

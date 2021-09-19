@@ -262,7 +262,25 @@ n fire runes + n water runes (+ n steam runes) = steam
 Sets allow to get Element resistances/weaknesses
 
 
-## Creatures
+## Bestiary
 
 - Elementals
 They have 100% absorption in a given element. If killed, they may trigger something related to their element. 
+
+## Gameplay and Progress
+
+### Story mode
+
+Allows to unlock trials floors.
+
+### Mind Trial
+
+Getting farther in this mode makes you loot more powerful effects
+
+### Body Trial
+
+Getting farther in the puzzle mode makes you loot more powerful equipment
+
+### Elemental Trial
+
+Getting farther in this mode makes you loot more powerful resources
