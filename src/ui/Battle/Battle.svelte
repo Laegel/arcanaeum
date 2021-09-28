@@ -216,8 +216,8 @@
           {/each}
         {/await}
         <button on:click={handleTurns}>End turn</button>
+        <Logs {logs} />
       </div>
-      <Logs {logs} />
     {/if}
   </div>
 </div>

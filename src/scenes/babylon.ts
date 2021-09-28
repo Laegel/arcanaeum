@@ -44,6 +44,7 @@ import {
   TARGETTABLE,
 } from "./utils/scope";
 import { Texture } from "@babylonjs/core/Materials/Textures/texture";
+import { getShortestPath } from "./utils/path";
 
 const inside = (point: Vector3, vs: Vector3[]) => {
   // ray-casting algorithm based on
@@ -103,6 +104,8 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
   // const ground = Mesh.CreateGround("ground1", 20, 20, 1, scene);
   // ground.material = grid;
 
+  const occupiedCells: Vector3[] = [];
+
   assetsManager.onTaskErrorObservable.add((task) => {
     console.log(
       "task failed",
@@ -127,6 +130,7 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
       matTrunk.diffuseColor = new Color3(0.4, 0.2, 0.2);
       treeMeshes[0].material = matSpines;
       treeMeshes[1].material = matTrunk;
+      occupiedCells.push(new Vector3(-4, 0.5, 3));
     },
   );
 
@@ -146,6 +150,7 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
       matTrunk.diffuseColor = new Color3(0.4, 0.2, 0.2);
       treeMeshes[0].material = matSpines;
       treeMeshes[1].material = matTrunk;
+      occupiedCells.push(new Vector3(4, 0, -2));
     },
   );
 
@@ -204,6 +209,8 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
         )),
     );
 
+    box.clone("obs").position = new Vector3(1, 0, -1);
+
     // for (let i = -5; i < 5; ++i) {
     //   for (let j = -5; j < 5; ++j) {
     //     box.clone("ground").position = new Vector3(i, -0.25, j);
@@ -231,6 +238,7 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
     if (currentSpell) {
       resetSelectedSpell();
     }
+    pathMeshes.forEach((mesh) => mesh.dispose());
 
     currentlyPlayingMesh = interactiveMeshes.find(
       (interactiveMesh) => interactiveMesh.metadata.entity === entity,
@@ -350,27 +358,11 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
 
   const animateMeshToCell = (mesh: Mesh, destination: Vector3) => {
     const position = mesh.position;
-    const path: Vector3[] = [];
-    const targetX = Math.abs(position.x - destination.x);
-    const targetZ = Math.abs(position.z - destination.z);
-    const stepX = position.x > destination.x ? -1 : 1;
-    const stepZ = position.z > destination.z ? -1 : 1;
-    let differenceX = 0;
-    while (differenceX < targetX) {
-      ++differenceX;
-      path.push(new Vector3(position.x + differenceX * stepX, 0, position.z));
-    }
-    let differenceZ = 0;
-    while (differenceZ < targetZ) {
-      ++differenceZ;
-      path.push(
-        new Vector3(
-          position.x + differenceX * stepX,
-          0,
-          position.z + differenceZ * stepZ,
-        ),
-      );
-    }
+    
+    const path = getShortestPath(position, destination, [
+      new Vector3(1, 0, -1),
+      ...interactiveMeshes.map((mesh) => mesh.position),
+    ]);
 
     const speed = 5;
     const animationPosition = new BABYLON.Animation(
@@ -423,14 +415,19 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
     scene.beginAnimation(mesh, 0, 300, false);
   };
 
-  const isPositionFree = (position: Vector3) =>
-    !interactiveMeshes.find(
-      (interactiveMesh) =>
-        interactiveMesh.position.x === position.x &&
-        interactiveMesh.position.z === position.z,
+  const isPositionFree = (position: Vector3) => {
+    return (
+      !occupiedCells.some(({ x, z }) => x === position.x && z === position.z) &&
+      !interactiveMeshes.some(
+        (interactiveMesh) =>
+          interactiveMesh.position.x === position.x &&
+          interactiveMesh.position.z === position.z,
+      )
     );
+  };
 
   let lastPosition = { x: -1, z: -1 };
+  let pathMeshes = [];
   const prepareEntityMovement = (pointerInfo) => {
     match(pointerInfo.type)
       .with(BABYLON.PointerEventTypes.POINTERMOVE, () => {
@@ -444,29 +441,37 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
         if (lastPosition.x === position.x && lastPosition.z === position.z) {
           return;
         }
+
+        pathMeshes.forEach((mesh) => mesh.dispose());
+
         lastPosition = position;
         const currentPosition = currentlyPlayingMesh.position;
         const cellsAmount =
           Math.abs(currentPosition.x - position.x) +
           Math.abs(currentPosition.z - position.z);
 
-        console.log("move");
+        const obstacles = [
+          new Vector3(1, 0, -1),
+          ...interactiveMeshes.map((mesh) => mesh.position),
+        ];
 
-        const onReply = (result) => {
-          console.log("fired", result);
-          // currentlyPlayingMesh.metadata.entity.off(
-          //   EntityEvent.ReplyMovementPermission,
-          //   onReply,
-          // );
-        };
-        currentlyPlayingMesh.metadata.entity.once(
-          EntityEvent.ReplyMovementPermission,
-          onReply,
-        );
-        currentlyPlayingMesh.metadata.entity.emit(
-          EntityEvent.RequestMovementPermission,
-          [currentlyPlayingMesh.metadata.entity, cellsAmount],
-        );
+        if (!obstacles.some((obstacle) => obstacle.equals(position))) {
+          const path = getShortestPath(currentPosition, position, obstacles);
+
+          const costAP = Math.ceil(cellsAmount / 2);
+          if (currentlyPlayingMesh.metadata.entity.hasNotEnoughAP(costAP)) {
+            return;
+          }
+          const targetMovementCell = Mesh.CreateGround("path", 1, 1, 3, scene);
+          targetMovementCell.id = "path";
+          targetMovementCell.visibility = 0;
+          path.forEach((cell) => {
+            const clone = targetMovementCell.clone();
+            clone.position = cell;
+            clone.visibility = 1;
+            pathMeshes.push(clone);
+          });
+        }
       })
       .with(BABYLON.PointerEventTypes.POINTERUP, () => {
         if (!getUnprojectedPosition()) {
@@ -484,6 +489,7 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
 
         const handleReplyMovementPermission = (canMove: boolean) => {
           if (canMove && isPositionFree(position)) {
+            pathMeshes.forEach((mesh) => mesh.dispose());
             animateMeshToCell(currentlyPlayingMesh, position);
 
             currentlyPlayingMesh.metadata.entity.emit(EntityEvent.Move, [
@@ -511,6 +517,7 @@ export default async (canvas, entities: Entity[], mapLink: string) => {
 
   const prepareSpellCasting = (pointerInfo) => {
     scene.onPointerObservable.removeCallback(prepareEntityMovement);
+    pathMeshes.forEach((mesh) => mesh.dispose());
 
     match(pointerInfo.type)
       .with(BABYLON.PointerEventTypes.POINTERMOVE, onPointerMove)
